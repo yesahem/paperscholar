@@ -37,4 +37,10 @@ yarn-error.log*
 .DS_Store
 *.pem
 
-docs/
+# Local storage driver data and Python tooling
+.storage/
+.venv/
+__pycache__/
+
+# Teardown of a third-party site. Kept local until the maintainer decides to publish it.
+docs/how-it-works.md

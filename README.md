@@ -1,159 +1,70 @@
-# Turborepo starter
+# PaperScholar
 
-This Turborepo starter is maintained by the Turborepo core team.
+Learn machine-learning papers by implementing them, one step at a time, with tests that check
+your code. Free to use, open source, and self-hostable.
 
-## Using this example
+> **Status: early development.** The foundation (M0) is in place. Follow progress in
+> [`docs/milestones/`](docs/milestones/README.md); the plan is in [`docs/specs/`](docs/specs/README.md).
 
-Run the following command:
+## What it will do
 
-```sh
-npx create-turbo@latest
-```
+- Break a paper into small implementation steps, each with a description, starter code and tests.
+- Run your Python in an isolated sandbox and show per-test results.
+- Turn an uploaded paper into verified learning steps with an AI pipeline and human review.
+- Track progress, streaks and a leaderboard. Every feature is free.
 
-## What's inside?
+## Repository
 
-This Turborepo includes the following packages/apps:
+| Path                                                   | What                                                              |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| `apps/web`                                             | Next.js frontend. Proxies `/api/*` to the backend.                |
+| `apps/backend`                                         | Hono API on Bun. Runs serverless or as a long-running server.     |
+| `packages/ui`                                          | Shared component kit and design tokens.                           |
+| `packages/shared`                                      | Contracts shared by both apps: error codes, schemas, env parsing. |
+| `packages/db`                                          | Drizzle schema, migrations and the Postgres client.               |
+| `packages/eslint-config`, `packages/typescript-config` | Shared tooling presets.                                           |
+| `docs/specs`                                           | What to build.                                                    |
+| `docs/milestones`                                      | What has been built, milestone by milestone.                      |
 
-### Apps and Packages
+## Run it locally
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Requires [Bun](https://bun.com) 1.3.14, Node.js 24 and Docker.
 
 ```sh
-cd my-turborepo
-turbo build
+bun install
+
+# Environment files (local defaults work as-is)
+cp apps/backend/.env.example apps/backend/.env
+cp apps/web/.env.example apps/web/.env
+cp packages/db/.env.example packages/db/.env
+
+# Database
+docker compose -f docker-compose.dev.yml up -d
+bun run db:migrate
+
+# Web on http://localhost:3000, backend on http://localhost:8797
+bun dev
 ```
 
-Without global `turbo`, use your package manager:
+`http://localhost:3000/api/health` reaches the backend through the web app's proxy.
+
+## Checks
 
 ```sh
-cd my-turborepo
-npx turbo build
-bun exec turbo build
-bun exec turbo build
+bun run format:check   # Prettier
+bun run lint           # ESLint, zero warnings
+bun run check-types    # TypeScript 7
+bun run test           # bun test (database tests run when DATABASE_URL is set)
+bun run build
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+CI runs the same checks, applies migrations to a fresh Postgres, and scans for secrets.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Contributing
 
-```sh
-turbo build --filter=docs
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md). Project rules for code, naming and components are in
+[AGENTS.md](AGENTS.md).
 
-Without global `turbo`:
+## Licence
 
-```sh
-npx turbo build --filter=docs
-bun exec turbo build --filter=docs
-bun exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-bun exec turbo dev
-bun exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-bun exec turbo dev --filter=web
-bun exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-bun exec turbo login
-bun exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-bun exec turbo link
-bun exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+[MIT](LICENSE).

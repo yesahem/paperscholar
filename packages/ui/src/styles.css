@@ -1,0 +1,117 @@
+/*
+ * Design tokens and base styles for every app that uses @repo/ui.
+ * Import after Tailwind:  @import "tailwindcss";  @import "@repo/ui/styles.css";
+ *
+ * Colours use light-dark(), so one declaration covers both themes. The theme
+ * follows the operating system unless <html data-theme="light|dark"> overrides it.
+ */
+
+/* Let Tailwind see the class names used by the shared components. */
+@source "./components";
+
+:root {
+  color-scheme: light dark;
+
+  --background: light-dark(oklch(0.99 0.002 265), oklch(0.15 0.008 265));
+  --foreground: light-dark(oklch(0.2 0.015 265), oklch(0.95 0.005 265));
+
+  --card: light-dark(oklch(1 0 0), oklch(0.19 0.01 265));
+  --card-foreground: var(--foreground);
+
+  --muted: light-dark(oklch(0.96 0.005 265), oklch(0.23 0.012 265));
+  --muted-foreground: light-dark(oklch(0.47 0.015 265), oklch(0.72 0.012 265));
+
+  --accent: light-dark(oklch(0.94 0.02 265), oklch(0.27 0.03 265));
+  --accent-foreground: light-dark(oklch(0.25 0.06 265), oklch(0.95 0.01 265));
+
+  --primary: light-dark(oklch(0.5 0.2 265), oklch(0.7 0.15 265));
+  --primary-hover: light-dark(oklch(0.44 0.2 265), oklch(0.76 0.13 265));
+  --primary-foreground: light-dark(oklch(0.99 0 0), oklch(0.16 0.03 265));
+
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+
+  --destructive: light-dark(oklch(0.54 0.2 27), oklch(0.68 0.18 25));
+  --destructive-hover: light-dark(oklch(0.48 0.2 27), oklch(0.74 0.16 25));
+  --destructive-foreground: light-dark(oklch(0.99 0 0), oklch(0.16 0.03 25));
+
+  --success: light-dark(oklch(0.5 0.13 155), oklch(0.74 0.15 155));
+  --warning: light-dark(oklch(0.55 0.13 70), oklch(0.82 0.14 80));
+
+  --border: light-dark(oklch(0.91 0.006 265), oklch(0.29 0.012 265));
+  --input: light-dark(oklch(0.86 0.008 265), oklch(0.35 0.014 265));
+  --ring: light-dark(oklch(0.55 0.2 265), oklch(0.72 0.15 265));
+
+  --radius: 0.5rem;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One visible focus style for every focusable element. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
