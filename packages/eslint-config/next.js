@@ -2,7 +2,7 @@ import { globalIgnores } from "eslint/config";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import pluginNext from "@next/eslint-plugin-next";
-import { config as baseConfig } from "./base.js";
+import { config as baseConfig, restrictImports, serverOnlyPackages } from "./base.js";
 
 /**
  * A custom ESLint configuration for libraries that use Next.js.
@@ -36,4 +36,10 @@ export const nextJsConfig = [
     },
   },
   pluginReactHooks.configs.flat.recommended,
+  {
+    rules: restrictImports(
+      serverOnlyPackages,
+      "Server-only package. The web app reaches it through the backend API (docs/specs/02-monorepo.md §5).",
+    ),
+  },
 ];

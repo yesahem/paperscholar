@@ -1,6 +1,6 @@
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
-import { config as baseConfig } from "./base.js";
+import { config as baseConfig, restrictImports, serverOnlyPackages } from "./base.js";
 
 /**
  * A custom ESLint configuration for libraries that use React.
@@ -17,4 +17,10 @@ export const config = [
     },
   },
   pluginReactHooks.configs.flat.recommended,
+  {
+    rules: restrictImports(
+      [...serverOnlyPackages, "next"],
+      "Shared UI stays framework-agnostic and browser-safe (docs/specs/02-monorepo.md §5).",
+    ),
+  },
 ];

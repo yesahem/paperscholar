@@ -1,0 +1,7 @@
+# Generated or vendored
+bun.lock
+**/drizzle/meta/**
+**/.next/**
+**/dist/**
+**/.turbo/**
+next-env.d.ts
