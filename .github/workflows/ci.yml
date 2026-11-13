@@ -41,17 +41,25 @@ jobs:
       DATABASE_URL: postgres://ci:ci@localhost:5432/ci
       API_ORIGIN: http://localhost:8797
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      S3_TEST_ENDPOINT: http://localhost:54331
+      S3_TEST_ACCESS_KEY_ID: ci
+      S3_TEST_SECRET_ACCESS_KEY: ci-secret-key
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: packages/runner/environments/*
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -68,8 +76,22 @@ jobs:
       - name: Apply database migrations
         run: bun run db:migrate
 
+      - name: Set up the runner's Python environment
+        run: bun run runner:setup
+
+      # An S3-compatible server standing in for Cloudflare R2. It needs a command,
+      # which service containers cannot take, so it is started here.
+      - name: Start the S3-compatible test server
+        run: >-
+          docker run -d --name objectstore -p 54331:7070
+          -e ROOT_ACCESS_KEY=ci -e ROOT_SECRET_KEY=ci-secret-key
+          versity/versitygw:v1.11.0 posix /tmp
+
       - name: Test
         run: bun run test
+
+      - name: Verify content
+        run: bun run content:verify
 
       - name: Build
         run: bun run build
@@ -79,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

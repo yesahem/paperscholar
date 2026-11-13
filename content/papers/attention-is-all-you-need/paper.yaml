@@ -1,0 +1,14 @@
+title: Attention Is All You Need
+authors:
+  - Ashish Vaswani
+  - Noam Shazeer
+  - Niki Parmar
+  - Jakob Uszkoreit
+  - Llion Jones
+  - Aidan N. Gomez
+  - Łukasz Kaiser
+  - Illia Polosukhin
+year: 2017
+url: https://arxiv.org/abs/1706.03762
+summary: The Transformer, a sequence model built from attention alone, without recurrence or convolution.
+tags: [nlp, transformers, attention]

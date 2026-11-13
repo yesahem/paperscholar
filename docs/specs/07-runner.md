@@ -101,27 +101,41 @@ So a user is never blocked by a lost run for more than two minutes.
 
 ## 4. Interface
 
-```ts
-type RunFile = { path: string; content: string };
+As built in M1 (`packages/runner/src/types.ts`). Results come from inside the sandbox, so
+they are validated with zod like any untrusted input.
 
-type RunRequest = {
-  submissionId: string;
-  environment: "numpy" | "torch";
-  mode: "run" | "submit";
-  files: RunFile[]; // solution.py, tests, harness.py, conftest.py, spec.json
+```ts
+type RunFile = { path: string; content: string }; // e.g. "solution.py", "tests/test_public.py"
+
+type HarnessSpec = {
+  action: "test" | "inspect";
+  entryPoint: string;
+  allowedPackages: string[];
+  prohibitedImports: string[]; // modules ("torch") or submodule paths ("torch.optim")
+  hasHelpers: boolean;
   perTestTimeoutSeconds: number;
   memoryLimitMb: number;
-  wallClockLimitSeconds: number; // hard cap for the whole run: 60
+  wallClockLimitSeconds: number; // 60
+  applyMemoryLimit: boolean; // false for the torch environment
+  applyProcessLimit: boolean; // true only under a dedicated sandbox user
+  inspectFiles: string[]; // for action "inspect"
+};
+
+type RunRequest = {
+  runId: string; // a submission id, or a verification run id
+  environment: "numpy" | "torch";
+  files: RunFile[]; // the provider adds harness.py, conftest.py and spec.json
+  spec: HarnessSpec;
 };
 
 type RunResult = {
   outcome:
     | "completed" // pytest ran to the end
     | "import_violation"
-    | "collection_error" // solution failed to import: syntax error, missing entry point
-    | "timeout" // whole-run wall clock exceeded
+    | "collection_error" // the submission failed to import: syntax error, missing entry point
+    | "timeout" // whole-run wall clock exceeded, or the import took longer than one test's limit
     | "out_of_memory"
-    | "harness_error"; // our fault
+    | "harness_error"; // our fault, including a test file that fails to load
   tests: {
     name: string;
     group: "public" | "hidden";
@@ -130,87 +144,111 @@ type RunResult = {
     message: string | null;
     traceback: string | null;
     stdout: string | null;
+    timedOut: boolean; // hit the per-test time limit
   }[];
-  violations: string[]; // module names, for import_violation
-  errorOutput: string | null; // for collection_error
+  violations: string[]; // for import_violation
+  errorOutput: string | null; // for collection_error and harness_error
   durationMs: number;
+  inspection?: { files: InspectedFile[] }; // for action "inspect"
 };
 
 interface SandboxProvider {
   readonly name: string;
-  run(request: RunRequest, signal: AbortSignal): Promise<RunResult>;
+  run(request: RunRequest, signal?: AbortSignal): Promise<RunResult>;
 }
 ```
+
+`buildRunRequest(problem, { runId, code, mode })` assembles a test run; hidden tests are
+included only in `submit` mode. `buildInspectRequest` assembles an `inspect` run, which
+parses files and reports their definitions, imports, test functions and assertions without
+executing anything. Verification check V1 and V10 use it.
 
 Files written into the sandbox working directory:
 
 | File                        | Source                                                        |
 | --------------------------- | ------------------------------------------------------------- |
-| `solution.py`               | The user's code, verbatim                                     |
+| `solution.py`               | The code under test, verbatim                                 |
 | `tests/test_public.py`      | The paper's `private.json`                                    |
 | `tests/test_hidden.py`      | The paper's `private.json` — **only when `mode` is `submit`** |
 | `helpers.py`                | The paper's `private.json`, when the problem has helpers      |
-| `conftest.py`, `harness.py` | `packages/runner/harness/`                                    |
-| `spec.json`                 | `entryPoint`, `allowedPackages`, `prohibitedImports`, limits  |
+| `conftest.py`, `harness.py` | `packages/runner/harness/`, bundled as text                   |
+| `spec.json`                 | The `HarnessSpec`                                             |
 
-For a learner's submission, the reference solution is never sent to the sandbox. When the
-pipeline or `content:verify` checks a problem, the code under test (the reference
+Request paths must match `^(tests/)?[a-z0-9_]+\.py$` and may not overwrite the harness
+files. For a learner's submission, the reference solution is never sent to the sandbox.
+When the pipeline or `content:verify` checks a problem, the code under test (the reference
 solution, the starter, a mutant, or an independent solver's answer) is written as
 `solution.py` in exactly the same way.
 
 ## 5. The harness
 
 `harness.py` is the single command the provider runs. It writes `result.json`, which the
-provider reads back. It does four things in order.
+provider reads back. For the `test` action it does four things in order.
 
 **1. Import scan.** Parse `solution.py` with Python's `ast` module, without executing it.
-Collect the top-level module of every `import` and `from … import`. The run ends with
-`import_violation` if any module is:
+The run ends with `import_violation` if the code:
 
-- in the problem's `prohibited_imports`; or
-- in the global denylist: `os`, `sys`, `subprocess`, `socket`, `ctypes`, `multiprocessing`,
-  `threading`, `importlib`, `shutil`, `pathlib`, `signal`, `resource`, `pickle`,
-  `urllib`, `http`, `requests`, `inspect`; or
-- neither in the Python standard library nor in `allowed_packages`. `helpers` is allowed
-  when the problem provides it. `inspect` is on the denylist, so helper source cannot be
-  printed.
+- imports a module in the problem's `prohibited_imports`;
+- uses a prohibited submodule path such as `torch.optim`, in an import, a `from` import, or
+  an attribute chain like `torch.optim.Adam` (also through `import torch as t`);
+- imports a standard-library module on the denylist: `_thread`, `asyncio`, `builtins`,
+  `code`, `codeop`, `concurrent`, `ctypes`, `fcntl`, `ftplib`, `gc`, `http`, `importlib`,
+  `inspect`, `io`, `marshal`, `mmap`, `multiprocessing`, `os`, `pathlib`, `pickle`, `pty`,
+  `requests`, `resource`, `runpy`, `select`, `selectors`, `shutil`, `signal`, `smtplib`,
+  `socket`, `ssl`, `subprocess`, `sys`, `tempfile`, `threading`, `tty`, `urllib`, `xmlrpc`;
+- imports anything that is neither standard library nor in `allowed_packages` (`helpers` is
+  allowed when the problem provides it), or uses a relative import;
+- calls `eval`, `exec`, `compile`, `open`, `input` or `breakpoint`, uses the names
+  `__import__`, `__builtins__`, `__loader__`, `__spec__`, or the attributes `__subclasses__`,
+  `__globals__`, `__builtins__`, `__code__`, `__bases__`, `__base__`, `__mro__`.
 
-Calls to `__import__`, `eval`, `exec` and `compile` by name are also reported. A syntax
-error at this stage ends the run with `collection_error`.
+A syntax error at this stage ends the run with `collection_error`.
 
-**2. Resource limits.** Before starting the test process, set `RLIMIT_AS` to
-`memoryLimitMb`, cap the number of processes, and cap the size of any file written.
+**2. Resource limits**, applied in the child before pytest starts, best effort: core dumps
+off; written files capped at 16 MB; on Linux, `RLIMIT_AS` of `memoryLimitMb` plus 768 MB of
+headroom for the interpreter and libraries (skipped for the `torch` environment, which
+reserves far more address space than it uses and relies on the sandbox's memory size);
+on Linux under a dedicated sandbox user, a process-count limit.
 
-**3. Run pytest** in a child process:
-`python -m pytest tests -p no:cacheprovider -q`, with a wall-clock limit of
-`wallClockLimitSeconds`. `conftest.py`:
+**3. Run pytest** in a child process in its own session, with an environment holding only
+`PATH` and fixed settings (no secrets can leak in), single-threaded BLAS, and
+`PYTHONHASHSEED=0`. The whole run is killed at `wallClockLimitSeconds`. `conftest.py`:
 
+- imports the submission once at session start, under one test's time limit, so its own
+  errors (and a missing entry point) are reported as the learner's;
 - applies a per-test alarm of `perTestTimeoutSeconds`; a test that exceeds it is recorded
-  as `failed` with message `"Time limit exceeded (N s)"`;
-- records each test's outcome, duration, captured stdout and failure text;
+  as `failed`, `timedOut: true`, message `"Time limit exceeded (N s)"`. The alarm raises a
+  `BaseException`, so `except Exception` in a submission cannot swallow it;
+- writes one JSON event per test to `events.jsonl`, which the harness reads afterwards;
+  nothing is parsed from pytest's console output;
 - derives `group` from the test file name.
 
-**4. Write `result.json`** matching `RunResult`. A `MemoryError` raised in any test, or a
-child killed for memory, yields `out_of_memory`; exceeding the wall clock yields `timeout`.
+**4. Write `result.json`** matching `RunResult`. A `MemoryError` in any test, or a child
+killed by the kernel, yields `out_of_memory`; exceeding the wall clock yields `timeout`; a
+test file that fails to load yields `harness_error`.
 
-Address-space limits are unreliable for PyTorch, which reserves far more virtual memory
-than it uses. For the `torch` environment, skip `RLIMIT_AS` and rely on the sandbox's own
-memory size, chosen as the smallest size at or above `memoryLimitMb`.
+**Known limitation.** User code runs as the same user as the harness inside the sandbox, so
+deliberately malicious code could try to forge `events.jsonl`. The import rules make this
+awkward (`open`, `os`, `io` and `pathlib` are refused) but not impossible, for example
+through a NumPy file writer. This affects only the submitter's own verdict, which is
+accepted as out of scope like pasting a known solution (spec 11 §1). It does not weaken
+isolation.
 
 ### What a failure reveals
 
-|             | Public test                                                            | Hidden test |
-| ----------- | ---------------------------------------------------------------------- | ----------- |
-| Test name   | Yes                                                                    | Yes         |
-| `message`   | Exception type and message, ≤ 500 characters                           | Same        |
-| `traceback` | Yes, limited to frames in `solution.py` and the failing assertion line | No          |
-| `stdout`    | Yes, ≤ 4 KB per test                                                   | No          |
+|             | Public test                                                            | Hidden test                               |
+| ----------- | ---------------------------------------------------------------------- | ----------------------------------------- |
+| Test name   | Yes                                                                    | Yes                                       |
+| `message`   | Exception type and message, or the full assertion text, ≤ 500 chars    | Only the first line: the author's message |
+| `traceback` | Frames in `solution.py` and the failing line of the test, ≤ 2000 chars | No                                        |
+| `stdout`    | Yes, ≤ 4 KB per test                                                   | No                                        |
 
 Hidden tests therefore show _which_ behaviour failed and the author's message, without
-exposing test source. This is why spec 03 §5 asks for learner-facing assertion messages.
+exposing test source or pytest's comparison detail. This is why spec 03 §5 asks for
+learner-facing assertion messages.
 
-Total `result.json` size is capped at 256 KB; excess test output is truncated with a
-marker.
+Total `result.json` size is capped at 256 KB; captured output, then tracebacks, then
+messages are replaced with a marker until it fits.
 
 ## 6. Stored result
 
@@ -238,7 +276,8 @@ Only `mode = submit` with verdict `passed` records progress.
 ### `LocalProvider` — development and CI only
 
 Creates a temporary directory, writes the files, and runs the harness with `Bun.spawn`
-using the developer's Python. It gives no isolation and MUST refuse to construct when
+using `RUNNER_PYTHON`, else the virtual environment from `bun run runner:setup`, else
+`python3`. It passes only `PATH` to the harness and kills it 15 seconds after the wall clock. It gives no isolation and MUST refuse to construct when
 `NODE_ENV` is `production`. It exists so that the full loop and `content:verify` work
 without a sandbox account.
 

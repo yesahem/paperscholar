@@ -1,0 +1,11 @@
+title: Multi-head attention
+summary: Run several attention heads on projected slices of the input and combine them.
+difficulty: hard
+type: model
+entry_point: multi_head_attention
+environment: numpy
+allowed_packages: [numpy]
+prohibited_imports: [torch, jax]
+time_limit_seconds: 2
+memory_limit_mb: 256
+paper_refs: [§3.2.2]

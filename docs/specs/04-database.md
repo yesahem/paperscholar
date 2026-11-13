@@ -52,7 +52,9 @@ quiz sets and courses are objects, laid out in spec 03 §2.
 
 What the database keeps about content is **state only**:
 
-- the advisory lock that serialises writes to `index.json` (no table);
+- the advisory lock that serialises writes to `index.json` (no table): a transaction-scoped
+  `pg_advisory_xact_lock(hashtext('content-index'))`, which works through transaction-mode
+  poolers (`createAdvisoryLock` in `@repo/db`);
 - the status of an edit awaiting verification:
 
 ```sql

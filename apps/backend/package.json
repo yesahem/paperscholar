@@ -8,11 +8,16 @@
     "start": "bun src/main.ts",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "content:sync": "bun run src/cli/content-sync.ts",
+    "content:export": "bun run src/cli/content-export.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "0.9.1",
+    "@repo/content": "*",
+    "@repo/db": "*",
     "@repo/shared": "*",
+    "@repo/storage": "*",
     "hono": "4.13.18",
     "zod": "4.6.7"
   },

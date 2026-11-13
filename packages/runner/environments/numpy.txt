@@ -1,0 +1,4 @@
+# The "numpy" sandbox image. Pinned: changing a version means rebuilding the
+# images and re-running content:verify (docs/specs/07-runner.md §8).
+numpy==2.5.4
+pytest==9.2.0

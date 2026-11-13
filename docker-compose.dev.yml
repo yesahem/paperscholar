@@ -23,5 +23,20 @@ services:
       timeout: 5s
       retries: 10
 
+  # S3-compatible object store standing in for Cloudflare R2. Like R2, it honours
+  # If-Match / If-None-Match on writes, which the content store relies on.
+  objectstore:
+    image: versity/versitygw:v1.11.0
+    restart: unless-stopped
+    command: ["posix", "/data"]
+    environment:
+      ROOT_ACCESS_KEY: paperscholar
+      ROOT_SECRET_KEY: paperscholar-dev-secret
+    ports:
+      - "127.0.0.1:54331:7070"
+    volumes:
+      - objectstore-data:/data
+
 volumes:
   postgres-data:
+  objectstore-data:

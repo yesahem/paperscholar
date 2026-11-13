@@ -1,0 +1,11 @@
+title: Polynomial kernel
+summary: Compute the polynomial kernel between two sets of points.
+difficulty: easy
+type: micro
+entry_point: polynomial_kernel
+environment: numpy
+allowed_packages: [numpy]
+prohibited_imports: [torch]
+time_limit_seconds: 2
+memory_limit_mb: 256
+paper_refs: [Method of Convolution of the Dot-Product in Feature Space]

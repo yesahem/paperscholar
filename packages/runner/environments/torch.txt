@@ -1,0 +1,4 @@
+# The "torch" sandbox image: everything in numpy.txt plus CPU-only PyTorch,
+# installed from the PyTorch CPU index (https://download.pytorch.org/whl/cpu).
+-r numpy.txt
+torch==2.15.0
