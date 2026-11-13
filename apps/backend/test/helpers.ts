@@ -8,6 +8,8 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   webOrigin: "http://localhost:3000",
   logLevel: "debug",
   version: "test-version",
+  databaseUrl: null,
+  storage: { driver: "fs", root: "/nonexistent-test-storage" },
   ...overrides,
 });
 

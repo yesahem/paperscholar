@@ -1,0 +1,11 @@
+title: Kernel decision function
+summary: Score new points with a trained kernel support-vector network.
+difficulty: medium
+type: model
+entry_point: decision_function
+environment: numpy
+allowed_packages: [numpy]
+prohibited_imports: [torch]
+time_limit_seconds: 2
+memory_limit_mb: 256
+paper_refs: [Method of Convolution of the Dot-Product in Feature Space]

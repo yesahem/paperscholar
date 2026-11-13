@@ -200,18 +200,18 @@ steps do not give away earlier answers.
 Each step's files are checked in the sandbox, using the same images and limits as learner
 submissions. A step is **verified** only when every blocking check passes.
 
-| #   | Check                         | Passes when                                                                                                                                | Blocking             |
-| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
-| V1  | Well-formed                   | All files parse; `entryPoint` is defined in starter and solution; tests import from `solution`; metadata satisfies the schema; no raw HTML | Yes                  |
-| V2  | Solution is correct           | Reference solution passes every public and hidden test                                                                                     | Yes                  |
-| V3  | Starter is unsolved           | Starter fails the public tests                                                                                                             | Yes                  |
-| V4  | Import policy                 | Solution obeys the step's own allowed and prohibited imports                                                                               | Yes                  |
-| V5  | Fast enough                   | Every test finishes in under half the step's time limit                                                                                    | Yes                  |
-| V6  | Deterministic                 | Three runs give identical per-test outcomes                                                                                                | Yes                  |
-| V7  | Tests have teeth              | See below                                                                                                                                  | Yes                  |
-| V8  | Solvable from the description | See below                                                                                                                                  | Yes                  |
-| V9  | Faithful to the paper         | See below                                                                                                                                  | Blocking issues only |
-| V10 | Test hygiene                  | Public and hidden counts in range; every assertion has a message; hidden messages do not print whole arrays                                | Yes                  |
+| #   | Check                         | Passes when                                                                                                                                                | Blocking             |
+| --- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| V1  | Well-formed                   | All files parse; `entryPoint` is defined in starter and solution; tests import from `solution`; metadata satisfies the schema; no raw HTML                 | Yes                  |
+| V2  | Solution is correct           | Reference solution passes every public and hidden test                                                                                                     | Yes                  |
+| V3  | Starter is unsolved           | Starter fails the public tests                                                                                                                             | Yes                  |
+| V4  | Import policy                 | Solution obeys the step's own allowed and prohibited imports                                                                                               | Yes                  |
+| V5  | Fast enough                   | Every test finishes in under half the step's time limit                                                                                                    | Yes                  |
+| V6  | Deterministic                 | Three runs give identical per-test outcomes                                                                                                                | Yes                  |
+| V7  | Tests have teeth              | See below                                                                                                                                                  | Yes                  |
+| V8  | Solvable from the description | See below                                                                                                                                                  | Yes                  |
+| V9  | Faithful to the paper         | See below                                                                                                                                                  | Blocking issues only |
+| V10 | Test hygiene                  | Public and hidden counts in range; every assertion has a message. Whether hidden messages print whole arrays is checked by the reviewer, not automatically | Yes                  |
 
 **V7 — mutation check.** Passing a correct solution does not show that tests catch
 incorrect ones. The model is asked for at least five _mutants_: plausible wrong

@@ -55,8 +55,10 @@ milestone: the project has no payments.
 
 **Scope.**
 
-- `packages/storage`: the `ObjectStorage` interface with the `r2` and `fs` drivers; R2
-  buckets, token and CORS rule created.
+- `packages/storage`: the `ObjectStorage` interface with the `r2` and `fs` drivers. Creating
+  the real R2 buckets, token and CORS rule needs the maintainer's Cloudflare account; until
+  then the `r2` driver is verified against an S3-compatible server with the same
+  conditional-write behaviour.
 - `packages/content`: schemas; the content store (object layout, immutable versions,
   index commit under a lock, read cache); file reader, `content:sync`, `content:export`.
 - `content_candidates` table.

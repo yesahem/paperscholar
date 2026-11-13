@@ -2,24 +2,11 @@
  * Long-running entry: local development (`bun dev`) and self-hosting.
  * Serverless hosts use src/index.ts instead.
  */
-import { EnvError } from "@repo/shared";
 import { createApp } from "./create-app";
-import { loadConfig, type AppConfig } from "./env";
 import { createLogger } from "./lib/logger";
+import { loadConfigOrExit } from "./load-config";
 
-function readConfig(): AppConfig {
-  try {
-    return loadConfig();
-  } catch (error) {
-    if (error instanceof EnvError) {
-      console.error(error.message);
-      process.exit(1);
-    }
-    throw error;
-  }
-}
-
-const config = readConfig();
+const config = loadConfigOrExit();
 const logger = createLogger({ level: config.logLevel });
 const app = createApp({ config, logger });
 

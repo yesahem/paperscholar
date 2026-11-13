@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path";
 import { EnvError } from "@repo/shared";
 import { DEFAULT_PORT, loadConfig } from "../src/env";
 
@@ -22,6 +23,8 @@ describe("loadConfig", () => {
       webOrigin: "http://localhost:3000",
       logLevel: "info",
       version: "dev",
+      databaseUrl: null,
+      storage: { driver: "fs", root: resolve(".storage") },
     });
   });
 
@@ -61,5 +64,47 @@ describe("loadConfig", () => {
     expect(
       loadConfig({ ...valid, VERCEL_GIT_COMMIT_SHA: "0123456789abcdef0123" }).version,
     ).toBe("0123456789ab");
+  });
+
+  test("r2 storage needs credentials, a bucket and an account or endpoint", () => {
+    expect(problemsFor({ ...valid, STORAGE_DRIVER: "r2" }).sort()).toEqual([
+      "R2_ACCESS_KEY_ID is required when STORAGE_DRIVER is r2",
+      "R2_ACCOUNT_ID or R2_ENDPOINT is required when STORAGE_DRIVER is r2",
+      "R2_BUCKET is required when STORAGE_DRIVER is r2",
+      "R2_SECRET_ACCESS_KEY is required when STORAGE_DRIVER is r2",
+    ]);
+    const config = loadConfig({
+      ...valid,
+      STORAGE_DRIVER: "r2",
+      R2_ACCOUNT_ID: "acc123",
+      R2_ACCESS_KEY_ID: "key",
+      R2_SECRET_ACCESS_KEY: "secret",
+      R2_BUCKET: "paperscholar-content",
+    });
+    expect(config.storage).toEqual({
+      driver: "r2",
+      accountId: "acc123",
+      endpoint: undefined,
+      region: "auto",
+      bucket: "paperscholar-content",
+      accessKeyId: "key",
+      secretAccessKey: "secret",
+    });
+  });
+
+  test("serverless hosting refuses the local-disk driver", () => {
+    expect(problemsFor({ ...valid, VERCEL: "1" })).toEqual([
+      "STORAGE_DRIVER must be r2 on serverless hosting, which has no persistent disk",
+    ]);
+  });
+
+  test("the database URL must be a postgres URL", () => {
+    expect(problemsFor({ ...valid, DATABASE_URL: "mysql://x" })).toEqual([
+      "DATABASE_URL must be a postgres:// connection URL",
+    ]);
+    expect(
+      loadConfig({ ...valid, DATABASE_URL: "postgres://u:p@localhost:5432/db" })
+        .databaseUrl,
+    ).toBe("postgres://u:p@localhost:5432/db");
   });
 });

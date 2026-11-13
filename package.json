@@ -10,7 +10,11 @@
     "db:migrate": "turbo run db:migrate",
     "db:generate": "bun run --filter @repo/db db:generate",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "content:verify": "bun run --filter @repo/pipeline content:verify",
+    "content:sync": "bun run --filter backend content:sync",
+    "content:export": "bun run --filter backend content:export",
+    "runner:setup": "bun run --filter @repo/runner runner:setup"
   },
   "devDependencies": {
     "prettier": "3.9.6",

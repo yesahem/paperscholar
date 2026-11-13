@@ -1,0 +1,11 @@
+title: Bias-corrected moment estimates
+summary: Update Adam's running averages of the gradient and correct their bias towards zero.
+difficulty: easy
+type: micro
+entry_point: update_moments
+environment: torch
+allowed_packages: [torch]
+prohibited_imports: [torch.optim, numpy]
+time_limit_seconds: 10
+memory_limit_mb: 1024
+paper_refs: [Algorithm 1, §3]

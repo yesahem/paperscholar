@@ -175,21 +175,22 @@ Enforced by ESLint `no-restricted-imports`:
 
 ## 6. Tasks
 
-| Command (root)                                     | Does                                                                               |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `bun dev`                                          | web on 3000 and backend on 8797                                                    |
-| `bun run worker`                                   | The pipeline worker loop (not needed for `bun dev` unless working on the pipeline) |
-| `bun run build`                                    | Builds packages, then the apps                                                     |
-| `bun run lint` / `check-types` / `format`          | As in the starter                                                                  |
-| `bun run test`                                     | `bun test` in api and packages                                                     |
-| `bun run db:migrate` / `db:seed`                   | Migrations and seed data                                                           |
-| `bun run content:verify`                           | Checks every paper in `content/` (needs Python)                                    |
-| `bun run content:sync`                             | Uploads `content/` to storage                                                      |
-| `bun run content:export <paper-id>`                | Downloads a paper from storage to `content/`                                       |
-| `bun run paper:ingest <pdf \| arxiv:ID>`           | Starts the pipeline for a paper                                                    |
-| `bun run paper:status <id>` / `paper:publish <id>` | Pipeline status and publishing from the command line                               |
-| `bun run admin:grant <email> <role>`               | Sets a user's role                                                                 |
-| `bun run pipeline:eval`                            | Runs the pipeline quality eval (spends LLM credit; run by hand)                    |
+| Command (root)                                     | Does                                                                                                 |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `bun dev`                                          | web on 3000 and backend on 8797                                                                      |
+| `bun run worker`                                   | The pipeline worker loop (not needed for `bun dev` unless working on the pipeline)                   |
+| `bun run build`                                    | Builds packages, then the apps                                                                       |
+| `bun run lint` / `check-types` / `format`          | As in the starter                                                                                    |
+| `bun run test`                                     | `bun test` in api and packages                                                                       |
+| `bun run db:migrate` / `db:seed`                   | Migrations and seed data                                                                             |
+| `bun run content:verify`                           | Checks every problem in `content/` (V1–V6, V10) with the local runner. Lives in `packages/pipeline`. |
+| `bun run runner:setup`                             | Creates `packages/runner/.venv` with the pinned NumPy, pytest and CPU PyTorch (needs uv)             |
+| `bun run content:sync`                             | Uploads `content/` to storage                                                                        |
+| `bun run content:export <paper-id>`                | Downloads a paper from storage to `content/`                                                         |
+| `bun run paper:ingest <pdf \| arxiv:ID>`           | Starts the pipeline for a paper                                                                      |
+| `bun run paper:status <id>` / `paper:publish <id>` | Pipeline status and publishing from the command line                                                 |
+| `bun run admin:grant <email> <role>`               | Sets a user's role                                                                                   |
+| `bun run pipeline:eval`                            | Runs the pipeline quality eval (spends LLM credit; run by hand)                                      |
 
 ## 7. Shared enums
 
@@ -221,16 +222,17 @@ list every variable with a comment.
 
 Each becomes required at the milestone that first uses it. M0 requires only `WEB_ORIGIN`.
 
-| Variable                                                                                                      | Purpose                                                                                   |
-| ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                                                                                | Postgres connection string (the pooler, when hosted)                                      |
-| `WEB_ORIGIN`                                                                                                  | Public site origin, e.g. `https://example.com`                                            |
-| `BETTER_AUTH_SECRET`                                                                                          | Session signing secret                                                                    |
-| `RUNNER_PROVIDER`                                                                                             | `local`, `http` (bundled runner), `vercel` or `e2b`                                       |
-| `INTERNAL_SECRET`                                                                                             | Authenticates scheduled and internal calls                                                |
-| `STORAGE_DRIVER`                                                                                              | `r2` or `fs`. Where all paper content lives. `r2` is required on serverless hosting.      |
-| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BUCKET`, `R2_PUBLIC_URL` | With `r2`: credentials, the private bucket, and the public bucket and its URL for avatars |
-| `STORAGE_FS_PATH`                                                                                             | With `fs`: the directory to use                                                           |
+| Variable                                                                                                                | Purpose                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`                                                                                                          | Postgres connection string (the pooler, when hosted)                                                                                             |
+| `WEB_ORIGIN`                                                                                                            | Public site origin, e.g. `https://example.com`                                                                                                   |
+| `BETTER_AUTH_SECRET`                                                                                                    | Session signing secret                                                                                                                           |
+| `RUNNER_PROVIDER`                                                                                                       | `local`, `http` (bundled runner), `vercel` or `e2b`                                                                                              |
+| `INTERNAL_SECRET`                                                                                                       | Authenticates scheduled and internal calls                                                                                                       |
+| `STORAGE_DRIVER`                                                                                                        | `r2` or `fs`. Where all paper content lives. `r2` is required on serverless hosting.                                                             |
+| `R2_ACCOUNT_ID` or `R2_ENDPOINT`, `R2_REGION` (default `auto`), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | With `r2`: the account (or an explicit S3 endpoint for other S3-compatible stores), signing region, credentials and the private bucket. From M1. |
+| `R2_PUBLIC_BUCKET`, `R2_PUBLIC_URL`                                                                                     | The public bucket for avatars and its URL. From M5.                                                                                              |
+| `STORAGE_FS_PATH`                                                                                                       | With `fs`: the directory to use                                                                                                                  |
 
 ### `apps/backend` — optional; each enables features (spec 13 §4)
 

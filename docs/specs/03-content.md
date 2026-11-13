@@ -225,7 +225,8 @@ allowed_packages: [numpy]
 prohibited_imports: [torch, jax]
 time_limit_seconds: 2
 memory_limit_mb: 256
-paper_refs: ["§3.5"]
+paper_refs: [§3.5]
+status: published # optional: published (default) or retired
 ```
 
 ```yaml
@@ -236,6 +237,14 @@ papers: [support-vector-machines, word2vec, attention-is-all-you-need]
 ```
 
 `tags` come from a controlled list in `packages/shared`.
+
+- `prohibited_imports` may name a module (`torch`) or a submodule path (`torch.optim`).
+- `allowed_packages` must be installed in the chosen environment (`ENVIRONMENT_PACKAGES` in
+  `packages/shared`, kept equal to `packages/runner/environments/` by a test).
+- YAML files use one canonical style (plain scalars where unambiguous, JSON-quoted
+  otherwise, `[a, b]` lists when the line fits in 90 columns). `content:export` writes that
+  style, so exporting a synced paper reproduces its files byte for byte.
+- Images in markdown are not supported yet; they arrive with the content pages (M2).
 
 ## 7. Sync and export
 

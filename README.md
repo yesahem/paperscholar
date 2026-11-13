@@ -3,7 +3,7 @@
 Learn machine-learning papers by implementing them, one step at a time, with tests that check
 your code. Free to use, open source, and self-hostable.
 
-> **Status: early development.** The foundation (M0) is in place. Follow progress in
+> **Status: early development.** Foundation (M0) and content model with runner (M1) are in place. Follow progress in
 > [`docs/milestones/`](docs/milestones/README.md); the plan is in [`docs/specs/`](docs/specs/README.md).
 
 ## What it will do
@@ -28,7 +28,7 @@ your code. Free to use, open source, and self-hostable.
 
 ## Run it locally
 
-Requires [Bun](https://bun.com) 1.3.14, Node.js 24 and Docker.
+Requires [Bun](https://bun.com) 1.3.14, Node.js 24, Docker and [uv](https://docs.astral.sh/uv/).
 
 ```sh
 bun install
@@ -38,9 +38,15 @@ cp apps/backend/.env.example apps/backend/.env
 cp apps/web/.env.example apps/web/.env
 cp packages/db/.env.example packages/db/.env
 
-# Database
+# Database and S3-compatible object store
 docker compose -f docker-compose.dev.yml up -d
 bun run db:migrate
+
+# Python for running problems (NumPy, pytest, CPU PyTorch)
+bun run runner:setup
+
+# Load the paper library into storage (apps/backend/.storage by default)
+bun run content:sync
 
 # Web on http://localhost:3000, backend on http://localhost:8797
 bun dev
@@ -54,11 +60,13 @@ bun dev
 bun run format:check   # Prettier
 bun run lint           # ESLint, zero warnings
 bun run check-types    # TypeScript 7
-bun run test           # bun test (database tests run when DATABASE_URL is set)
+bun run test           # bun test (database and S3 tests run when configured)
+bun run content:verify # every problem: solution passes, starter fails, tests are sound
 bun run build
 ```
 
-CI runs the same checks, applies migrations to a fresh Postgres, and scans for secrets.
+CI runs the same checks against a fresh Postgres and an S3-compatible server, and scans for
+secrets.
 
 ## Contributing
 

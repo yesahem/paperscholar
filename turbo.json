@@ -1,6 +1,7 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": ["PATH"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -16,7 +17,15 @@
     },
     "test": {
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "env": ["DATABASE_URL"]
+      "env": [
+        "CI",
+        "DATABASE_URL",
+        "RUNNER_PYTHON",
+        "S3_TEST_ENDPOINT",
+        "S3_TEST_ACCESS_KEY_ID",
+        "S3_TEST_SECRET_ACCESS_KEY",
+        "S3_TEST_BUCKET"
+      ]
     },
     "dev": {
       "cache": false,
