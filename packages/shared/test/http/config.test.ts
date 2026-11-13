@@ -10,6 +10,7 @@ const config: InstanceConfig = {
     listings: false,
     googleSignIn: false,
     emailVerification: false,
+    passwordReset: false,
     signups: true,
   },
   limits: { runsPerDay: 100, codeBytes: 65536 },

@@ -33,10 +33,11 @@ Requires [Bun](https://bun.com) 1.3.14, Node.js 24, Docker and [uv](https://docs
 ```sh
 bun install
 
-# Environment files (local defaults work as-is)
+# Environment files. Local defaults work as-is, except the backend's auth secret.
 cp apps/backend/.env.example apps/backend/.env
 cp apps/web/.env.example apps/web/.env
 cp packages/db/.env.example packages/db/.env
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> apps/backend/.env
 
 # Database and S3-compatible object store
 docker compose -f docker-compose.dev.yml up -d
@@ -56,6 +57,11 @@ Hide or show a paper without a redeploy: `bun run content:status <paper-id> draf
 `published`). The site reflects it within a minute.
 
 `http://localhost:3000/api/health` reaches the backend through the web app's proxy.
+
+Sign up from the header. In development, emails are printed by the backend instead of
+being sent, so the verification and password-reset links appear in the `bun dev` output.
+Make yourself an admin with `bun run admin:grant <email> admin`, or list your address in
+`ADMIN_EMAILS` before signing up.
 
 ## Checks
 

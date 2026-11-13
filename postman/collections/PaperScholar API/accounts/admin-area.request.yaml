@@ -1,0 +1,13 @@
+$kind: http-request
+name: Admin area as a user
+order: 7000
+method: GET
+url: "{{baseUrl}}/api/v1/admin/papers"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is not discoverable by an ordinary user', () => {
+        pm.response.to.have.status(404);
+        pm.expect(pm.response.json().error.code).to.eql('not_found');
+      });

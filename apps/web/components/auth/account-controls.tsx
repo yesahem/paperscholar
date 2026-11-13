@@ -1,0 +1,76 @@
+"use client";
+
+import { Button } from "@repo/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@repo/ui/components/dropdown-menu";
+import { Skeleton } from "@repo/ui/components/skeleton";
+import { ChevronDown, LogOut, UserRound } from "lucide-react";
+import { useState } from "react";
+import { signOut } from "@/lib/auth/auth-api";
+import { useMe, useRefreshMe } from "@/lib/queries";
+import { useAuthDialog } from "./auth-dialog";
+
+/** The header's account area: a sign-in button, or the signed-in user's menu. */
+export function AccountControls() {
+  const me = useMe();
+  const dialog = useAuthDialog();
+  const refreshMe = useRefreshMe();
+  const [signOutFailed, setSignOutFailed] = useState(false);
+
+  if (me.isPending) return <Skeleton className="h-8 w-20" />;
+
+  if (!me.data) {
+    return (
+      <Button size="sm" onClick={() => dialog.open("sign-in")}>
+        Sign in
+      </Button>
+    );
+  }
+
+  async function leave() {
+    setSignOutFailed(false);
+    try {
+      await signOut();
+      await refreshMe();
+    } catch {
+      setSignOutFailed(true);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {signOutFailed ? (
+        <span role="alert" className="text-xs text-destructive">
+          Sign-out failed
+        </span>
+      ) : null}
+      <DropdownMenu
+        align="end"
+        triggerLabel={`Account: ${me.data.username}`}
+        trigger={
+          <>
+            <UserRound aria-hidden="true" />
+            <span className="hidden max-w-32 truncate sm:inline">{me.data.username}</span>
+            <ChevronDown aria-hidden="true" />
+          </>
+        }
+      >
+        <DropdownMenuLabel>
+          Signed in as{" "}
+          <span className="font-medium text-foreground">{me.data.username}</span>
+          <br />
+          {me.data.email}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void leave()}>
+          <LogOut aria-hidden="true" />
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenu>
+    </div>
+  );
+}

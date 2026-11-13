@@ -1,0 +1,9 @@
+$kind: collection
+name: Accounts
+description: |-
+  Sign-up through Better Auth, then the signed-in user's own account
+  (docs/specs/05-api.md §7, docs/specs/06-auth.md). Creates a throwaway
+  account and deletes it at the end. Requests run in order and share the
+  session cookie. Sign-up is rate-limited per address (10 per 10 minutes by
+  default), so many runs in a row from one machine will start to get 429.
+order: 3000

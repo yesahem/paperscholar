@@ -1,7 +1,14 @@
 import { FEATURES, instanceConfigSchema, MAX_CODE_BYTES } from "@repo/shared";
 import { describe, expect, test } from "bun:test";
 import { PUBLIC_CONTENT_CACHE_CONTROL } from "../../src/middleware/public-cache";
-import { createTestApp } from "../helpers";
+import { createTestApp, testConfig } from "../helpers";
+
+const ACCOUNT_FEATURES = new Set<string>([
+  "signups",
+  "emailVerification",
+  "passwordReset",
+  "googleSignIn",
+]);
 
 describe("GET /api/v1/config", () => {
   test("describes the instance: features, limits and version", async () => {
@@ -15,11 +22,46 @@ describe("GET /api/v1/config", () => {
     expect(config.version).toBe("v-test");
   });
 
-  test("reports every feature this build does not contain yet as off", async () => {
+  test("reports features this build does not contain yet as off", async () => {
     const { app } = createTestApp();
-    const config = instanceConfigSchema.parse(
+    const { features } = instanceConfigSchema.parse(
       await (await app.request("/api/v1/config")).json(),
     );
-    for (const feature of FEATURES) expect(config.features[feature]).toBe(false);
+    for (const feature of FEATURES.filter((name) => !ACCOUNT_FEATURES.has(name))) {
+      expect(features[feature]).toBe(false);
+    }
+  });
+
+  test("a minimal instance: sign-up on, no verification, reset or Google", async () => {
+    const { app } = createTestApp();
+    const { features } = instanceConfigSchema.parse(
+      await (await app.request("/api/v1/config")).json(),
+    );
+    expect(features).toMatchObject({
+      signups: true,
+      emailVerification: false,
+      passwordReset: false,
+      googleSignIn: false,
+    });
+  });
+
+  test("account features follow the configuration", async () => {
+    const { app } = createTestApp({
+      auth: {
+        ...testConfig().auth,
+        signups: false,
+        google: { clientId: "id", clientSecret: "secret" },
+      },
+      email: { driver: "log" },
+    });
+    const { features } = instanceConfigSchema.parse(
+      await (await app.request("/api/v1/config")).json(),
+    );
+    expect(features).toMatchObject({
+      signups: false,
+      emailVerification: true,
+      passwordReset: true,
+      googleSignIn: true,
+    });
   });
 });

@@ -42,7 +42,34 @@ export {
   type InstanceConfig,
 } from "./http/config";
 export {
+  BIO_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  RESERVED_USERNAMES,
+  ROLES,
+  USERNAME_CHANGE_INTERVAL_DAYS,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
+  USERNAME_PATTERN,
+  hasRole,
+  normaliseUsername,
+  usernameProblem,
+  type Role,
+} from "./accounts";
+export {
+  deleteMeSchema,
+  meSchema,
+  roleSchema,
+  updateMeSchema,
+  usernameSchema,
+  type DeleteMe,
+  type Me,
+  type UpdateMe,
+} from "./http/me";
+export {
   EnvError,
+  envBooleanSchema,
+  envListSchema,
   httpOriginSchema,
   parseEnv,
   requiredOr,

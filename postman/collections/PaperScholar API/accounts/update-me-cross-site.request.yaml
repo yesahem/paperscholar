@@ -1,0 +1,22 @@
+$kind: http-request
+name: Update me from another site
+order: 6000
+method: PATCH
+url: "{{baseUrl}}/api/v1/me"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: https://evil.example
+body:
+  type: json
+  content: |-
+    { "bio": "pwned" }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('refuses a write from another origin', () => {
+        pm.response.to.have.status(403);
+        pm.expect(pm.response.json().error.code).to.eql('forbidden');
+      });

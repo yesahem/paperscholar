@@ -2,6 +2,7 @@ import { SITE } from "@repo/shared";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
+import { Providers } from "@/components/providers";
 import { loadWebEnv } from "@/lib/env";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -47,7 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="flex min-h-dvh flex-col bg-background text-foreground antialiased">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

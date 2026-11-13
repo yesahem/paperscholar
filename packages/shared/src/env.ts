@@ -28,6 +28,19 @@ export const httpOriginSchema = z
   )
   .transform((value) => new URL(value).origin);
 
+/** A boolean variable, written exactly `true` or `false`. */
+export const envBooleanSchema = z
+  .enum(["true", "false"], { error: "must be true or false" })
+  .transform((value) => value === "true");
+
+/** A comma-separated list; blank entries are dropped. */
+export const envListSchema = z.string().transform((value) =>
+  value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== ""),
+);
+
 /** Thrown when an app's environment is missing or has invalid variables. */
 export class EnvError extends Error {
   constructor(

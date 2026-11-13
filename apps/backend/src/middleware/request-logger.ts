@@ -1,5 +1,5 @@
 import { createMiddleware } from "hono/factory";
-import { routePath } from "hono/route";
+import { matchedRoutes } from "hono/route";
 import type { AppEnv } from "../types";
 
 /**
@@ -10,11 +10,12 @@ export function requestLogger() {
   return createMiddleware<AppEnv>(async (c, next) => {
     const started = performance.now();
     await next();
-    const route = routePath(c, -1);
+    // Middleware is registered for every method ("ALL"); handlers are not.
+    const handler = matchedRoutes(c).findLast((route) => route.method !== "ALL");
     const status = c.res.status;
     const fields = {
       method: c.req.method,
-      route: route === "/*" ? "unmatched" : route,
+      route: handler?.path ?? "unmatched",
       status,
       durationMs: Math.round((performance.now() - started) * 10) / 10,
     };

@@ -1,9 +1,22 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { EnvError } from "@repo/shared";
-import { DEFAULT_PORT, DEFAULT_RUNS_PER_DAY, loadConfig } from "../src/env";
+import {
+  DEFAULT_AUTH_RATE_LIMIT_MAX,
+  DEFAULT_AUTH_RATE_LIMIT_WINDOW_SECONDS,
+  DEFAULT_PORT,
+  DEFAULT_RUNS_PER_DAY,
+  loadConfig,
+  verifiesEmail,
+} from "../src/env";
 
-const valid = { WEB_ORIGIN: "http://localhost:3000" };
+const SECRET = "x".repeat(32);
+const DATABASE_URL = "postgres://u:p@localhost:5432/db";
+const valid = {
+  WEB_ORIGIN: "http://localhost:3000",
+  DATABASE_URL,
+  BETTER_AUTH_SECRET: SECRET,
+};
 
 function problemsFor(source: Record<string, string | undefined>): string[] {
   try {
@@ -23,9 +36,24 @@ describe("loadConfig", () => {
       webOrigin: "http://localhost:3000",
       logLevel: "info",
       version: "dev",
-      databaseUrl: null,
+      databaseUrl: DATABASE_URL,
       storage: { driver: "fs", root: resolve(".storage") },
       limits: { runsPerDay: DEFAULT_RUNS_PER_DAY },
+      auth: {
+        secret: SECRET,
+        adminEmails: [],
+        signups: true,
+        requireEmailVerification: true,
+        google: null,
+        rateLimit: {
+          max: DEFAULT_AUTH_RATE_LIMIT_MAX,
+          windowSeconds: DEFAULT_AUTH_RATE_LIMIT_WINDOW_SECONDS,
+        },
+        clientIpHeader: "x-forwarded-for",
+        trustedProxies: [],
+      },
+      // Development prints emails instead of sending them.
+      email: { driver: "log" },
     });
   });
 
@@ -36,26 +64,36 @@ describe("loadConfig", () => {
     ]);
   });
 
-  test("names a missing required variable", () => {
-    expect(problemsFor({})).toEqual(["WEB_ORIGIN is required"]);
+  test("names every missing required variable", () => {
+    expect(problemsFor({}).sort()).toEqual([
+      "BETTER_AUTH_SECRET is required",
+      "DATABASE_URL is required",
+      "WEB_ORIGIN is required",
+    ]);
   });
 
   test("treats an empty value as unset", () => {
-    expect(problemsFor({ WEB_ORIGIN: "  " })).toEqual(["WEB_ORIGIN is required"]);
+    expect(problemsFor({ ...valid, WEB_ORIGIN: "  " })).toEqual([
+      "WEB_ORIGIN is required",
+    ]);
     expect(loadConfig({ ...valid, PORT: "" }).port).toBe(DEFAULT_PORT);
   });
 
   test("rejects an origin with a path and normalises a trailing slash", () => {
-    expect(problemsFor({ WEB_ORIGIN: "https://example.com/app" })[0]).toStartWith(
-      "WEB_ORIGIN must be an origin",
-    );
-    expect(loadConfig({ WEB_ORIGIN: "https://example.com/" }).webOrigin).toBe(
+    expect(
+      problemsFor({ ...valid, WEB_ORIGIN: "https://example.com/app" })[0],
+    ).toStartWith("WEB_ORIGIN must be an origin");
+    expect(loadConfig({ ...valid, WEB_ORIGIN: "https://example.com/" }).webOrigin).toBe(
       "https://example.com",
     );
   });
 
   test("rejects non-http origins and bad ports, reporting every problem", () => {
-    const problems = problemsFor({ WEB_ORIGIN: "ftp://example.com", PORT: "99999" });
+    const problems = problemsFor({
+      ...valid,
+      WEB_ORIGIN: "ftp://example.com",
+      PORT: "99999",
+    });
     expect(problems).toHaveLength(2);
     expect(problems.some((p) => p.startsWith("WEB_ORIGIN"))).toBe(true);
     expect(problems.some((p) => p.startsWith("PORT"))).toBe(true);
@@ -110,9 +148,88 @@ describe("loadConfig", () => {
     expect(problemsFor({ ...valid, DATABASE_URL: "mysql://x" })).toEqual([
       "DATABASE_URL must be a postgres:// connection URL",
     ]);
+    expect(loadConfig(valid).databaseUrl).toBe(DATABASE_URL);
+  });
+
+  test("the auth secret must be long enough", () => {
+    expect(problemsFor({ ...valid, BETTER_AUTH_SECRET: "short" })[0]).toStartWith(
+      "BETTER_AUTH_SECRET must be at least 32 characters",
+    );
+  });
+
+  test("reads admin emails, lowercased, and rejects anything else", () => {
     expect(
-      loadConfig({ ...valid, DATABASE_URL: "postgres://u:p@localhost:5432/db" })
-        .databaseUrl,
-    ).toBe("postgres://u:p@localhost:5432/db");
+      loadConfig({ ...valid, ADMIN_EMAILS: "Ada@Example.com, grace@example.com" }).auth
+        .adminEmails,
+    ).toEqual(["ada@example.com", "grace@example.com"]);
+    expect(problemsFor({ ...valid, ADMIN_EMAILS: "ada" })[0]).toStartWith("ADMIN_EMAILS");
+  });
+
+  test("reads the sign-up and verification switches", () => {
+    const config = loadConfig({
+      ...valid,
+      ALLOW_SIGNUPS: "false",
+      REQUIRE_EMAIL_VERIFICATION: "false",
+    });
+    expect(config.auth.signups).toBe(false);
+    expect(config.auth.requireEmailVerification).toBe(false);
+    expect(problemsFor({ ...valid, ALLOW_SIGNUPS: "no" })).toEqual([
+      "ALLOW_SIGNUPS must be true or false",
+    ]);
+  });
+
+  test("Google needs both its client id and secret", () => {
+    expect(problemsFor({ ...valid, GOOGLE_CLIENT_ID: "id" })).toEqual([
+      "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together",
+    ]);
+    expect(
+      loadConfig({ ...valid, GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "secret" })
+        .auth.google,
+    ).toEqual({ clientId: "id", clientSecret: "secret" });
+  });
+
+  test("email: log in development, none elsewhere, never log in production", () => {
+    expect(loadConfig({ ...valid, NODE_ENV: "test" }).email).toEqual({ driver: "none" });
+    expect(
+      problemsFor({ ...valid, NODE_ENV: "production", EMAIL_DRIVER: "log" }),
+    ).toEqual([
+      "EMAIL_DRIVER cannot be log in production: it prints sign-in links to the console",
+    ]);
+  });
+
+  test("email drivers name what they are missing", () => {
+    expect(problemsFor({ ...valid, EMAIL_DRIVER: "resend" }).sort()).toEqual([
+      "EMAIL_FROM is required when EMAIL_DRIVER is resend",
+      "RESEND_API_KEY is required when EMAIL_DRIVER is resend",
+    ]);
+    expect(problemsFor({ ...valid, EMAIL_DRIVER: "smtp" }).sort()).toEqual([
+      "EMAIL_FROM is required when EMAIL_DRIVER is smtp",
+      "SMTP_HOST is required when EMAIL_DRIVER is smtp",
+    ]);
+    expect(
+      loadConfig({
+        ...valid,
+        EMAIL_DRIVER: "smtp",
+        EMAIL_FROM: "PaperScholar <no-reply@example.com>",
+        SMTP_HOST: "smtp.example.com",
+        SMTP_USER: "user",
+        SMTP_PASSWORD: "password",
+      }).email,
+    ).toEqual({
+      driver: "smtp",
+      from: "PaperScholar <no-reply@example.com>",
+      host: "smtp.example.com",
+      port: 587,
+      secure: false,
+      auth: { user: "user", password: "password" },
+    });
+  });
+
+  test("verifiesEmail needs a sender and the switch on", () => {
+    expect(verifiesEmail(loadConfig({ ...valid, NODE_ENV: "test" }))).toBe(false);
+    expect(verifiesEmail(loadConfig(valid))).toBe(true);
+    expect(
+      verifiesEmail(loadConfig({ ...valid, REQUIRE_EMAIL_VERIFICATION: "false" })),
+    ).toBe(false);
   });
 });

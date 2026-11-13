@@ -49,10 +49,7 @@
       "compositePrimaryKeys": {
         "rate_limit_counters_key_window_start_pk": {
           "name": "rate_limit_counters_key_window_start_pk",
-          "columns": [
-            "key",
-            "window_start"
-          ]
+          "columns": ["key", "window_start"]
         }
       },
       "uniqueConstraints": {},

@@ -93,6 +93,15 @@ a dedicated key-value store behind the same interface.
 hosting platform guarantees carries the original client address, and test on a preview
 deployment that it survives the proxy hop. Never trust a client-supplied forwarding header.
 
+> **Measured in M3.** The header is `CLIENT_IP_HEADER` (default `x-forwarded-for`), with
+> `TRUSTED_PROXIES` for chains. `next start`'s `/api` rewrite **adds no forwarding header
+> and passes a client-supplied one through unchanged** (Next.js 16 also removed
+> `request.ip`). So on a self-hosted box the address must be set by a reverse proxy in
+> front of `web` that overwrites the header; M4's `docker-compose.yml` has to include one.
+> Without any trusted header, a production API counts every visitor in one shared bucket
+> per auth route. On the hosted deployment, Vercel's edge sets `x-forwarded-for`; that it
+> reaches the API across the rewrite is still to be checked on a preview.
+
 ## 4. Input handling
 
 - Every body, query and path parameter is validated with zod; unknown fields are rejected.
