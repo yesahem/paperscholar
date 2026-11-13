@@ -47,9 +47,16 @@ export {
   ContentConcurrencyError,
   ContentCorruptError,
   ContentNotFoundError,
+  ContentReadOnlyError,
 } from "./store/errors";
 export { CONTENT_INDEX_KEY, paperVersionKey, TRACKS_KEY } from "./store/keys";
-export { CONTENT_INDEX_LOCK, createProcessLock, type IndexLock } from "./store/lock";
+export {
+  CONTENT_INDEX_LOCK,
+  createProcessLock,
+  createReadOnlyLock,
+  type IndexLock,
+} from "./store/lock";
+export { extractPythonInterface } from "./python-interface";
 export { toCanonicalYaml, type YamlValue } from "./yaml";
 export {
   syncLibrary,

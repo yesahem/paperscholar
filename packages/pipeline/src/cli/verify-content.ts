@@ -37,7 +37,7 @@ function readEnv() {
         RUNNER_PYTHON: z.string().optional(),
       }),
       process.env,
-      { app: "content:verify", exampleFile: "packages/runner/README.md" },
+      { app: "content:verify", exampleFile: "packages/pipeline/.env.example" },
     );
   } catch (error) {
     if (error instanceof EnvError) {

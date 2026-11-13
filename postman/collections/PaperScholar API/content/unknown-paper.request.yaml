@@ -1,0 +1,13 @@
+$kind: http-request
+name: Unknown paper
+order: 5000
+method: GET
+url: "{{baseUrl}}/api/v1/papers/no-such-paper-exists"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is not_found', () => {
+        pm.response.to.have.status(404);
+        pm.expect(pm.response.json().error.code).to.eql('not_found');
+      });

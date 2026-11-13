@@ -14,6 +14,8 @@
     "content:verify": "bun run --filter @repo/pipeline content:verify",
     "content:sync": "bun run --filter backend content:sync",
     "content:export": "bun run --filter backend content:export",
+    "content:status": "bun run --filter backend content:status",
+    "api:contract": "postman collection run \"postman/collections/PaperScholar API\" -e postman/environments/local.environment.yaml",
     "runner:setup": "bun run --filter @repo/runner runner:setup"
   },
   "devDependencies": {

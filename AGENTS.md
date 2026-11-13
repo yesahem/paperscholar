@@ -29,7 +29,9 @@ These rules apply to every change in this repository, by people and by agents.
   `@repo/shared`; one handler renders the error envelope (spec 05 §3). Messages sent to users
   never contain internals. Unexpected errors are logged with their stack.
 - **Configuration is explicit.** Each app reads `process.env` in exactly one module (`env.ts`).
-  Every variable is documented in that app's `.env.example`.
+  Every workspace (app or package) that reads a variable, in code, scripts or tests, has
+  its own `.env.example` documenting each one: what it does, its default, and whether it
+  is required. Adding a variable means adding it to that file in the same change.
 - **Secrets stay server-side** and out of logs. Never log bodies, code, cookies, tokens or emails.
 - **Tests prove behaviour.** Every service, route and pure helper ships with `bun test` tests in
   `test/`, mirroring `src/`. A bug fix comes with a test that failed before it.

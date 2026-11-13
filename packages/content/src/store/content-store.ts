@@ -38,7 +38,7 @@ export interface ContentStoreOptions {
   storage: ObjectStorage;
   lock: IndexLock;
   now?: () => Date;
-  /** How long a cached index is trusted before revalidating. @default 30000 */
+  /** How long a cached index or tracks document is trusted before revalidating. @default 30000 */
   indexTtlMs?: number;
   /** Version documents kept in memory. They never change, so caching is safe. @default 200 */
   maxCachedDocuments?: number;
@@ -59,6 +59,11 @@ export interface PublishInput {
 interface CachedIndex {
   index: ContentIndex;
   etag: string | null;
+  fetchedAt: number;
+}
+
+interface CachedTracks {
+  doc: TracksDoc | null;
   fetchedAt: number;
 }
 
@@ -105,6 +110,7 @@ export class ContentStore {
   private readonly indexTtlMs: number;
   private cachedIndex: CachedIndex | null = null;
   private pendingIndex: Promise<CachedIndex> | null = null;
+  private cachedTracks: CachedTracks | null = null;
   private readonly publicDocs: LruCache<PaperPublicDoc>;
   private readonly privateDocs: LruCache<PaperPrivateDoc>;
 
@@ -231,9 +237,46 @@ export class ContentStore {
     });
   }
 
-  async getTracks(): Promise<TracksDoc | null> {
+  /**
+   * Changes a paper's status without writing a new version. The first move to
+   * `published` records when and by whom.
+   */
+  async setPaperStatus(
+    paperId: string,
+    status: PaperStatus,
+    { by = null }: { by?: string | null } = {},
+  ): Promise<IndexEntry> {
+    return this.lock.withLock(async () => {
+      const snapshot = await this.readIndexForWrite();
+      const existing = snapshot.index.papers.find((entry) => entry.id === paperId);
+      if (!existing) throw new ContentNotFoundError(`Paper ${paperId}`);
+      if (existing.status === status) return existing;
+
+      const now = this.now().toISOString();
+      const firstPublish = status === "published" && existing.publishedAt === null;
+      const entry: IndexEntry = {
+        ...existing,
+        status,
+        publishedAt: firstPublish ? now : existing.publishedAt,
+        publishedBy: firstPublish ? by : existing.publishedBy,
+        updatedAt: now,
+      };
+      await this.commitIndex(snapshot, entry);
+      return entry;
+    });
+  }
+
+  /** Learning tracks, cached like the index. `fresh` bypasses the cache. */
+  async getTracks({
+    fresh = false,
+  }: { fresh?: boolean } = {}): Promise<TracksDoc | null> {
+    const cached = this.cachedTracks;
+    if (!fresh && cached && Date.now() - cached.fetchedAt < this.indexTtlMs)
+      return cached.doc;
     const object = await this.storage.get(TRACKS_KEY);
-    return object ? parseJson(TRACKS_KEY, object.body, tracksDocSchema) : null;
+    const doc = object ? parseJson(TRACKS_KEY, object.body, tracksDocSchema) : null;
+    this.cachedTracks = { doc, fetchedAt: Date.now() };
+    return doc;
   }
 
   async putTracks(doc: TracksDoc): Promise<void> {
@@ -243,6 +286,7 @@ export class ContentStore {
         contentType: JSON_TYPE,
       });
     });
+    this.cachedTracks = { doc: valid, fetchedAt: Date.now() };
   }
 
   private async revalidateIndex(): Promise<CachedIndex> {

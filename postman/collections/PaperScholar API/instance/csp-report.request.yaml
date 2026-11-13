@@ -1,0 +1,19 @@
+$kind: http-request
+name: CSP violation report
+order: 2000
+method: POST
+url: "{{baseUrl}}/api/csp-report"
+headers:
+  - key: Content-Type
+    value: application/csp-report
+body:
+  type: text
+  content: |-
+    {"csp-report": {"document-uri": "https://example.com/papers", "effective-directive": "script-src-elem", "blocked-uri": "inline", "disposition": "report"}}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is accepted with no content', () => {
+        pm.response.to.have.status(204);
+      });

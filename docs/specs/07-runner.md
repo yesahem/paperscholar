@@ -112,7 +112,7 @@ type HarnessSpec = {
   entryPoint: string;
   allowedPackages: string[];
   prohibitedImports: string[]; // modules ("torch") or submodule paths ("torch.optim")
-  hasHelpers: boolean;
+  hasHelpers: boolean; // the runner's own request; stored content has helpersInterface (spec 03 §2.1)
   perTestTimeoutSeconds: number;
   memoryLimitMb: number;
   wallClockLimitSeconds: number; // 60

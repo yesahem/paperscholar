@@ -1,2 +1,106 @@
 @import "tailwindcss";
 @import "@repo/ui/styles.css";
+
+/*
+ * Rendered markdown: problem descriptions, tutorials and the static pages
+ * (components/content/markdown.tsx). Built on the design tokens, so both
+ * themes work.
+ */
+@layer components {
+  .markdown {
+    @apply text-[0.95rem] leading-7 text-foreground;
+  }
+  .markdown > * + * {
+    @apply mt-4;
+  }
+  .markdown h1,
+  .markdown h2,
+  .markdown h3,
+  .markdown h4 {
+    @apply mt-8 font-semibold tracking-tight text-balance first:mt-0;
+  }
+  .markdown h1 {
+    @apply text-2xl;
+  }
+  .markdown h2 {
+    @apply text-xl;
+  }
+  .markdown h3 {
+    @apply text-lg;
+  }
+  .markdown a {
+    @apply text-primary underline underline-offset-4 hover:text-primary-hover;
+  }
+  .markdown ul {
+    @apply list-disc pl-6;
+  }
+  .markdown ol {
+    @apply list-decimal pl-6;
+  }
+  .markdown li + li {
+    @apply mt-1.5;
+  }
+  .markdown blockquote {
+    @apply border-l-2 border-border pl-4 text-muted-foreground;
+  }
+  .markdown hr {
+    @apply border-border;
+  }
+  .markdown :not(pre) > code {
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em];
+  }
+  .markdown pre {
+    @apply overflow-x-auto rounded-lg border border-border bg-muted/60 p-4 font-mono text-sm leading-6;
+  }
+  .markdown table {
+    @apply block w-full overflow-x-auto border-collapse text-sm;
+  }
+  .markdown th,
+  .markdown td {
+    @apply border border-border px-3 py-1.5 text-left;
+  }
+  .markdown th {
+    @apply bg-muted font-medium;
+  }
+  .markdown .katex-display {
+    @apply overflow-x-auto overflow-y-hidden py-1;
+  }
+}
+
+/* Syntax colours for highlighted code (highlight.js classes), per theme. */
+:root {
+  --code-keyword: light-dark(oklch(0.5 0.2 300), oklch(0.78 0.13 300));
+  --code-string: light-dark(oklch(0.5 0.13 150), oklch(0.8 0.13 150));
+  --code-number: light-dark(oklch(0.55 0.15 50), oklch(0.82 0.12 60));
+  --code-comment: light-dark(oklch(0.55 0.02 265), oklch(0.65 0.02 265));
+  --code-function: light-dark(oklch(0.48 0.17 255), oklch(0.78 0.12 255));
+  --code-builtin: light-dark(oklch(0.5 0.12 200), oklch(0.8 0.1 200));
+}
+
+.hljs-keyword,
+.hljs-literal,
+.hljs-meta {
+  color: var(--code-keyword);
+}
+.hljs-string,
+.hljs-regexp {
+  color: var(--code-string);
+}
+.hljs-number {
+  color: var(--code-number);
+}
+.hljs-comment,
+.hljs-quote {
+  color: var(--code-comment);
+  font-style: italic;
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+  color: var(--code-function);
+}
+.hljs-built_in,
+.hljs-type,
+.hljs-params {
+  color: var(--code-builtin);
+}

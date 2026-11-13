@@ -1,0 +1,25 @@
+$kind: http-request
+name: Get problem
+order: 3000
+method: GET
+url: "{{baseUrl}}/api/v1/papers/{{paperId}}/problems/{{problemId}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('returns the documented fields and nothing private', () => {
+        pm.response.to.have.status(200);
+        const problem = pm.response.json();
+        pm.expect(problem).to.have.all.keys(
+          'id', 'title', 'summary', 'difficulty', 'type', 'order', 'paperId',
+          'description', 'tutorial', 'starter', 'entryPoint', 'environment',
+          'allowedPackages', 'prohibitedImports', 'timeLimitSeconds', 'memoryLimitMb',
+          'paperRefs', 'helpersInterface'
+        );
+        pm.expect(problem.paperId).to.eql(pm.collectionVariables.get('paperId'));
+        pm.expect(problem.description).to.be.a('string').and.not.empty;
+        pm.expect(problem.starter).to.include(`def ${problem.entryPoint}`);
+        pm.expect(['numpy', 'torch']).to.include(problem.environment);
+        pm.expect(problem.timeLimitSeconds).to.be.above(0);
+        pm.expect(problem.memoryLimitMb).to.be.above(0);
+      });

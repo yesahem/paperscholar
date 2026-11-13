@@ -1,0 +1,18 @@
+$kind: http-request
+name: List tracks
+order: 4000
+method: GET
+url: "{{baseUrl}}/api/v1/tracks"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('returns tracks over published papers', () => {
+        pm.response.to.have.status(200);
+        const { items } = pm.response.json();
+        pm.expect(items).to.be.an('array');
+        for (const track of items) {
+          pm.expect(track).to.have.all.keys('id', 'title', 'summary', 'paperIds');
+          pm.expect(track.paperIds).to.be.an('array').that.is.not.empty;
+        }
+      });

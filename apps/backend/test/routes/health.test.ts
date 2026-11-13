@@ -1,6 +1,6 @@
 import { healthResponseSchema } from "@repo/shared";
 import { describe, expect, test } from "bun:test";
-import { createTestApp } from "./helpers";
+import { createTestApp } from "../helpers";
 
 describe("GET /api/health", () => {
   test("reports liveness and the deployed version", async () => {

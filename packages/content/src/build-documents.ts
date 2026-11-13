@@ -1,3 +1,4 @@
+import { extractPythonInterface } from "./python-interface";
 import type { StoredProblemPrivate, StoredProblemPublic } from "./schemas/stored";
 import type { SourceProblem } from "./source/read-library";
 
@@ -26,7 +27,8 @@ export function toStoredProblem(problem: SourceProblem): {
       description: problem.description,
       tutorial: problem.tutorial,
       starter: problem.starter,
-      hasHelpers: problem.helpers !== null,
+      helpersInterface:
+        problem.helpers === null ? null : extractPythonInterface(problem.helpers),
       contentHash: problem.contentHash,
     },
     private: {

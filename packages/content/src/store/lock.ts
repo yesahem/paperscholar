@@ -1,3 +1,5 @@
+import { ContentReadOnlyError } from "./errors";
+
 /** Name of the lock every writer of content/index.json takes. */
 export const CONTENT_INDEX_LOCK = "content-index";
 
@@ -18,5 +20,15 @@ export function createProcessLock(): IndexLock {
       tail = run.catch(() => undefined);
       return run;
     },
+  };
+}
+
+/**
+ * For processes that only read content, such as the API serving learners.
+ * Every write through a store holding this lock fails with ContentReadOnlyError.
+ */
+export function createReadOnlyLock(): IndexLock {
+  return {
+    withLock: () => Promise.reject(new ContentReadOnlyError()),
   };
 }

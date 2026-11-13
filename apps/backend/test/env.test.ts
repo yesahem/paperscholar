@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { EnvError } from "@repo/shared";
-import { DEFAULT_PORT, loadConfig } from "../src/env";
+import { DEFAULT_PORT, DEFAULT_RUNS_PER_DAY, loadConfig } from "../src/env";
 
 const valid = { WEB_ORIGIN: "http://localhost:3000" };
 
@@ -25,7 +25,15 @@ describe("loadConfig", () => {
       version: "dev",
       databaseUrl: null,
       storage: { driver: "fs", root: resolve(".storage") },
+      limits: { runsPerDay: DEFAULT_RUNS_PER_DAY },
     });
+  });
+
+  test("reads the daily run allowance and rejects a non-positive one", () => {
+    expect(loadConfig({ ...valid, RUNS_PER_DAY: "25" }).limits.runsPerDay).toBe(25);
+    expect(problemsFor({ ...valid, RUNS_PER_DAY: "0" })).toEqual([
+      "RUNS_PER_DAY must be at least 1",
+    ]);
   });
 
   test("names a missing required variable", () => {

@@ -1,13 +1,13 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
-  "globalPassThroughEnv": ["PATH"],
+  "globalPassThroughEnv": ["PATH", "NEXT_PHASE"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"],
-      "env": ["API_ORIGIN"]
+      "env": ["API_ORIGIN", "NEXT_PUBLIC_SITE_URL", "NODE_ENV"]
     },
     "lint": {
       "dependsOn": ["^lint"]

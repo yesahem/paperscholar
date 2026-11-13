@@ -1,0 +1,18 @@
+$kind: http-request
+name: List papers when unchanged
+order: 1500
+method: GET
+url: "{{baseUrl}}/api/v1/papers"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const response = await pm.sendRequest(pm.variables.replaceIn('{{baseUrl}}/api/v1/papers'));
+      pm.request.headers.upsert({ key: 'If-None-Match', value: response.headers.get('ETag') });
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('answers a matching If-None-Match with 304 and no body', () => {
+        pm.response.to.have.status(304);
+        pm.expect(pm.response.text()).to.eql('');
+      });

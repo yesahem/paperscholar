@@ -49,9 +49,16 @@ app.route("/api", api);
 
 ### Typed client
 
-`apps/web` builds its client with `hc<AppType>()` from `hono/client`, importing `AppType`
-as a type only. If type inference becomes slow as the API grows, export one type per
-router and create one client per router.
+`apps/web` calls the API through `fetchJson(url, schema)` (`apps/web/lib/api/fetch-json.ts`),
+parsing every response with the zod schema from `packages/shared` that the backend's
+handlers are typed against. One schema is the contract on both sides, and the web app
+validates what it receives, as AGENTS.md §1 requires.
+
+> **Changed in M2.** The spec first proposed `hc<AppType>()` from `hono/client`. Importing
+> `AppType`, even as a type, makes the web app's type-check load the backend's whole module
+> graph (Bun, Drizzle, storage drivers), and `hc` does not validate responses. Browser
+> code imports zod-free modules (`@repo/shared/vocabulary`, `@repo/shared/site`) and
+> validates with `zod/mini`, so the full zod build stays out of the page bundle.
 
 ## 3. Errors
 
@@ -94,8 +101,14 @@ Rules:
 - Lists return `{ items: T[], nextCursor: string | null }`. `limit` defaults to 20, maximum 100. `cursor` is opaque.
 - The leaderboard is the exception: it uses `offset`, because a rank is a position.
 - Public content responses send
-  `Cache-Control: public, s-maxage=60, stale-while-revalidate=86400` and an `ETag`: the
-  index's ETag for lists, the paper's version for a paper or problem.
+  `Cache-Control: public, s-maxage=20, stale-while-revalidate=86400` and a strong `ETag`,
+  a digest of the body, and answer a matching `If-None-Match` with `304`. A digest
+  changes exactly when the response does, including when a paper's status changes
+  without a new version.
+- **Freshness budget.** A content change reaches every page within a minute: the API
+  revalidates its cached `index.json` after 10 s, shared caches keep a response for 20 s,
+  and the web app revalidates content pages every 30 s. Measured in M2: unpublishing a
+  paper left the catalogue after 12 s; republishing it showed after 27 s.
 - Everything that depends on the session sends `Cache-Control: private, no-store`.
 
 ## 5. Endpoints — content (milestone 2)
@@ -146,8 +159,13 @@ type ProblemDetail = ProblemSummary & {
 };
 ```
 
-Also includes `paperRefs: string[]` and, when the problem has helpers,
-`helpersInterface: string` (signatures and docstrings only).
+Also includes `paperRefs: string[]` and `helpersInterface: string | null`: the helpers'
+public function and class signatures with their docstrings, bodies replaced by `...`,
+extracted when the paper is published and stored in `public.json`. `null` without helpers.
+
+`year` is `number | null` (unknown years exist). A problem's `order` is its 1-based
+position among the paper's **published** problems, so retiring one renumbers the rest
+without gaps. Lists are sorted by title.
 
 Every published problem is public and cacheable. Nothing is gated by plan.
 
@@ -333,6 +351,11 @@ Public. Tells the web app what this instance offers (spec 13 §4).
 
 A request to an endpoint of a feature that is off returns `404 not_found`.
 
+A feature is on only when the build contains it **and** the instance is configured for
+it; each becomes configurable in the milestone that builds it (spec 12). As of M2 every
+feature is reported off. `limits.runsPerDay` comes from `RUNS_PER_DAY` (default 100) and
+`limits.codeBytes` is 65 536. The response is public and cached like content.
+
 ### Maintainer endpoints (milestone 6)
 
 All under `/v1/admin`, all requiring role `maintainer` or `admin`; everyone else receives
@@ -376,6 +399,7 @@ Specified in spec 10. Paths reserved here so naming stays consistent.
 | Method and path                    | Auth                                     | Purpose                                                                                           |
 | ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `GET /api/health`                  | None                                     | `{ ok: true, version }`. No database call.                                                        |
+| `POST /api/csp-report`             | None                                     | Content-Security-Policy violation reports from browsers (spec 11 §2). Logs a reduced form; `204`. |
 | `POST /api/internal/cron/cleanup`  | `Authorization: Bearer $INTERNAL_SECRET` | Daily: reap stuck submissions, apply retention (04 §8)                                            |
 | `POST /api/internal/pipeline/tick` | `Authorization: Bearer $INTERNAL_SECRET` | Runs pipeline tasks (09 §13). Serverless mode only; self-hosted instances use the worker process. |
 

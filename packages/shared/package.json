@@ -5,7 +5,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./site": "./src/site.ts",
+    "./vocabulary": "./src/vocabulary.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

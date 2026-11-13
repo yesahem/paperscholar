@@ -1,0 +1,21 @@
+$kind: http-request
+name: Get paper
+order: 2000
+method: GET
+url: "{{baseUrl}}/api/v1/papers/{{paperId}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('returns the paper with its ordered problems', () => {
+        pm.response.to.have.status(200);
+        const paper = pm.response.json();
+        pm.expect(paper.id).to.eql(pm.collectionVariables.get('paperId'));
+        pm.expect(paper.problems).to.have.lengthOf(paper.problemCount);
+        paper.problems.forEach((problem, index) => {
+          pm.expect(problem).to.have.all.keys('id', 'title', 'summary', 'difficulty', 'type', 'order');
+          pm.expect(problem.order).to.eql(index + 1);
+          pm.expect(['easy', 'medium', 'hard']).to.include(problem.difficulty);
+        });
+        pm.collectionVariables.set('problemId', paper.problems[0].id);
+      });
