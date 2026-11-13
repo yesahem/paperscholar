@@ -6,6 +6,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./accounts": "./src/accounts.ts",
+    "./errors": "./src/errors.ts",
     "./site": "./src/site.ts",
     "./vocabulary": "./src/vocabulary.ts"
   },

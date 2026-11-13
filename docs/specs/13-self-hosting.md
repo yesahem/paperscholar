@@ -82,14 +82,14 @@ roadmap.
 
 **Add as wanted.**
 
-| To enable                                                  | Configure                               |
-| ---------------------------------------------------------- | --------------------------------------- |
-| Paper pipeline, cold mail, mock interview                  | `ANTHROPIC_API_KEY`                     |
-| Email verification and password reset by email             | SMTP settings or an email API key       |
-| Google sign-in                                             | Google OAuth client ID and secret       |
-| Content and uploads on Cloudflare R2 instead of local disk | `STORAGE_DRIVER=r2` and the R2 settings |
-| Courses with video                                         | Your own video files in storage         |
-| Voice in the mock interview                                | A speech provider                       |
+| To enable                                                  | Configure                                                                                                       |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Paper pipeline, cold mail, mock interview                  | `ANTHROPIC_API_KEY`                                                                                             |
+| Email verification and password reset by email             | `EMAIL_DRIVER=smtp` and the `SMTP_*` settings, or `EMAIL_DRIVER=resend` and `RESEND_API_KEY`; plus `EMAIL_FROM` |
+| Google sign-in                                             | Google OAuth client ID and secret                                                                               |
+| Content and uploads on Cloudflare R2 instead of local disk | `STORAGE_DRIVER=r2` and the R2 settings                                                                         |
+| Courses with video                                         | Your own video files in storage                                                                                 |
+| Voice in the mock interview                                | A speech provider                                                                                               |
 
 ### Feature switches
 
@@ -106,6 +106,7 @@ explicitly.
 | `listings`          | Listings data has been imported | `FEATURE_LISTINGS=false`                     |
 | `googleSignIn`      | Google credentials present      | —                                            |
 | `emailVerification` | An email sender is configured   | `REQUIRE_EMAIL_VERIFICATION=false`           |
+| `passwordReset`     | An email sender is configured   | —                                            |
 | `signups`           | Always                          | `ALLOW_SIGNUPS=false` for a private instance |
 
 ### Limits

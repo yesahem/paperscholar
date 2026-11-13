@@ -5,3 +5,8 @@ values:
     enabled: true
     type: default
     description: The backend from `bun dev` (PORT in apps/backend/.env). Use http://localhost:3000 to go through the web app's /api proxy.
+  - key: webOrigin
+    value: "http://localhost:3000"
+    enabled: true
+    type: default
+    description: The web origin the backend trusts (WEB_ORIGIN in apps/backend/.env). Sent as Origin on writes.

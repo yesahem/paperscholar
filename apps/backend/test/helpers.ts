@@ -1,8 +1,19 @@
 import { ContentStore, createReadOnlyLock } from "@repo/content";
+import { createDb, type Database } from "@repo/db";
 import { FsStorage } from "@repo/storage";
+import type { EmailMessage, EmailSender } from "../src/adapters/email/types";
 import { createApp } from "../src/create-app";
 import type { AppConfig } from "../src/env";
 import { createLogger, type LogLevel } from "../src/lib/logger";
+
+/** A 32-character secret for tests only. */
+export const TEST_AUTH_SECRET = "test-secret-test-secret-test-secret";
+
+/**
+ * Lazily connecting client for tests that never reach the database: no
+ * connection is opened until a query runs, and none should.
+ */
+const UNUSED_DATABASE_URL = "postgres://unused:unused@127.0.0.1:1/unused";
 
 export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   env: "test",
@@ -10,9 +21,20 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   webOrigin: "http://localhost:3000",
   logLevel: "debug",
   version: "test-version",
-  databaseUrl: null,
+  databaseUrl: UNUSED_DATABASE_URL,
   storage: { driver: "fs", root: "/nonexistent-test-storage" },
   limits: { runsPerDay: 100 },
+  auth: {
+    secret: TEST_AUTH_SECRET,
+    adminEmails: [],
+    signups: true,
+    requireEmailVerification: true,
+    google: null,
+    rateLimit: { max: 10, windowSeconds: 600 },
+    clientIpHeader: "x-forwarded-for",
+    trustedProxies: [],
+  },
+  email: { driver: "none" },
   ...overrides,
 });
 
@@ -30,16 +52,49 @@ export function readOnlyStore(root = "/nonexistent-test-storage"): ContentStore 
   });
 }
 
+/** Records every email instead of sending it. */
+export function memoryEmailSender(): EmailSender & { sent: EmailMessage[] } {
+  const sent: EmailMessage[] = [];
+  return {
+    sent,
+    async send(message) {
+      sent.push(message);
+    },
+  };
+}
+
+export interface TestAppOptions {
+  content?: ContentStore;
+  db?: Database;
+  email?: EmailSender | null;
+}
+
 /** An app wired to a logger that records every line for assertions. */
 export function createTestApp(
   overrides: Partial<AppConfig> = {},
   content: ContentStore = readOnlyStore(),
+  { db, email = null }: Omit<TestAppOptions, "content"> = {},
 ) {
   const logs: CapturedLog[] = [];
   const logger = createLogger({
     level: "debug",
     write: (line, level) => logs.push({ level, entry: JSON.parse(line) }),
   });
-  const app = createApp({ config: testConfig(overrides), logger, content });
-  return { app, logs };
+  const background: Promise<unknown>[] = [];
+  const config = testConfig(overrides);
+  const app = createApp({
+    config,
+    logger,
+    content,
+    db: db ?? createDb({ url: config.databaseUrl, maxConnections: 1 }),
+    email,
+    runInBackground: (task) => {
+      background.push(task);
+    },
+  });
+  /** Waits for work started after responses, such as emails. */
+  const settle = async () => {
+    while (background.length > 0) await Promise.all(background.splice(0));
+  };
+  return { app, logs, settle };
 }

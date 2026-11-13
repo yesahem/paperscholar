@@ -1,0 +1,24 @@
+$kind: http-request
+name: Get me
+order: 3000
+method: GET
+url: "{{baseUrl}}/api/v1/me"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('returns the signed-in account', () => {
+        pm.response.to.have.status(200);
+        const me = pm.response.json();
+        pm.expect(me).to.have.all.keys(
+          'id', 'username', 'email', 'emailVerified', 'avatarUrl', 'bio', 'role', 'createdAt'
+        );
+        pm.expect(me.username).to.eql(pm.collectionVariables.get('username'));
+        pm.expect(me.email).to.eql(pm.collectionVariables.get('email'));
+        pm.expect(me.role).to.eql('user');
+        pm.expect(me.bio).to.eql(null);
+        pm.expect(new Date(me.createdAt).toISOString()).to.eql(me.createdAt);
+      });
+      pm.test('is never cached', () => {
+        pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store');
+      });

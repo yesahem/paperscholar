@@ -1,0 +1,12 @@
+$kind: http-request
+name: Me after deleting
+order: 10000
+method: GET
+url: "{{baseUrl}}/api/v1/me"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is signed out', () => {
+        pm.response.to.have.status(401);
+      });

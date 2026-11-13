@@ -92,7 +92,7 @@ apps/web/
   lib/
     api/                   fetch-json.ts (validated fetch), content.ts (server-only
                            content reads), health.ts
-    auth-client.ts         Better Auth client
+    auth/                  Better Auth calls (auth-api.ts), messages, safe redirects
     queries.ts             TanStack Query hooks, one per endpoint
     env.ts
   public/monaco/           self-hosted editor assets (copied at build)

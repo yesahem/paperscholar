@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { check, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { user } from "./auth";
 
 export const CONTENT_CANDIDATE_STATUSES = [
   "pending",
@@ -13,8 +14,6 @@ export const CONTENT_CANDIDATE_STATUSES = [
  * An edit to a paper awaiting verification. The edited files live in object
  * storage at content/papers/<paperId>/candidates/<id>.json; this row holds
  * only the state (docs/specs/04-database.md §4a).
- *
- * `created_by` gains its foreign key to "user" when accounts arrive in M3.
  */
 export const contentCandidates = pgTable(
   "content_candidates",
@@ -25,7 +24,7 @@ export const contentCandidates = pgTable(
       .notNull()
       .default("pending"),
     verification: jsonb("verification"),
-    createdBy: text("created_by"),
+    createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

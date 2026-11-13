@@ -30,11 +30,15 @@ repository's content (`.github/workflows/ci.yml`).
 
 ## Layout
 
-| Path                                       | Holds                                                        |
-| ------------------------------------------ | ------------------------------------------------------------ |
-| `collections/PaperScholar API/.resources/` | Collection variables and checks every response must pass     |
-| `collections/PaperScholar API/content/`    | `GET /v1/papers`, papers, problems and tracks, 304s, 400/404 |
-| `collections/PaperScholar API/instance/`   | `GET /v1/config` and `POST /api/csp-report`                  |
-| `environments/`                            | `local` (`http://localhost:8797`) and `preview`              |
+| Path                                       | Holds                                                                                      |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `collections/PaperScholar API/.resources/` | Collection variables and checks every response must pass                                   |
+| `collections/PaperScholar API/content/`    | `GET /v1/papers`, papers, problems and tracks, 304s, 400/404                               |
+| `collections/PaperScholar API/accounts/`   | Sign-up, `/v1/me` read, update, refusals, admin 404, delete                                |
+| `collections/PaperScholar API/instance/`   | `GET /v1/config` and `POST /api/csp-report`                                                |
+| `environments/`                            | `local` (`http://localhost:8797`) and `preview`; `webOrigin` is sent as `Origin` on writes |
+
+The accounts folder creates a throwaway account and deletes it. Sign-up is rate-limited per
+address (10 per 10 minutes by default), so many runs in a row from one machine get `429`.
 
 Lint after editing: `postman collection lint "postman/collections/PaperScholar API"`.

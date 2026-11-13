@@ -65,6 +65,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Signs sessions for the backend started below. Generated per run, never stored.
+      - name: Generate an auth secret
+        run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
       - name: Check formatting
         run: bun run format:check
 

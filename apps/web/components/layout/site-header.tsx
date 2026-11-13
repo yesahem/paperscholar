@@ -3,6 +3,8 @@ import { buttonVariants } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/cn";
 import { BookOpenText } from "lucide-react";
 import Link from "next/link";
+import { AccountControls } from "@/components/auth/account-controls";
+import { VerificationBanner } from "@/components/auth/verification-banner";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { NavLink } from "./nav-link";
 
@@ -12,7 +14,10 @@ const NAVIGATION = [
   { href: "/about", label: "About" },
 ] as const;
 
-/** The header on every page: the product name, navigation and theme switch. */
+/**
+ * The header on every page: the product name, navigation, theme switch and
+ * account controls, with the email-verification banner beneath when needed.
+ */
 export function SiteHeader({ className }: { className?: string }) {
   return (
     <header
@@ -56,7 +61,9 @@ export function SiteHeader({ className }: { className?: string }) {
           GitHub
         </a>
         <ThemeToggle />
+        <AccountControls />
       </div>
+      <VerificationBanner />
     </header>
   );
 }

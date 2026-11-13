@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { EnvError, httpOriginSchema, parseEnv } from "../src";
+import {
+  EnvError,
+  envBooleanSchema,
+  envListSchema,
+  httpOriginSchema,
+  parseEnv,
+} from "../src";
 
 const schema = z.object({
   ORIGIN: httpOriginSchema,
@@ -60,5 +66,26 @@ describe("httpOriginSchema", () => {
     ]) {
       expect(httpOriginSchema.safeParse(value).success).toBe(false);
     }
+  });
+});
+
+describe("envBooleanSchema and envListSchema", () => {
+  const flags = z.object({
+    ENABLED: envBooleanSchema.default(true),
+    NAMES: envListSchema.default([]),
+  });
+
+  test("parse true/false and comma lists", () => {
+    expect(parseEnv(flags, { ENABLED: "false", NAMES: " a, ,b " }, options)).toEqual({
+      ENABLED: false,
+      NAMES: ["a", "b"],
+    });
+    expect(parseEnv(flags, {}, options)).toEqual({ ENABLED: true, NAMES: [] });
+  });
+
+  test("reject anything but true or false", () => {
+    expect(() => parseEnv(flags, { ENABLED: "yes" }, options)).toThrow(
+      "ENABLED must be true or false",
+    );
   });
 });

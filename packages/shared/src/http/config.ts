@@ -12,6 +12,7 @@ export const FEATURES = [
   "listings",
   "googleSignIn",
   "emailVerification",
+  "passwordReset",
   "signups",
 ] as const;
 export const featureSchema = z.enum(FEATURES);
@@ -30,6 +31,7 @@ export const instanceConfigSchema = z.object({
     listings: z.boolean(),
     googleSignIn: z.boolean(),
     emailVerification: z.boolean(),
+    passwordReset: z.boolean(),
     signups: z.boolean(),
   } satisfies Record<Feature, z.ZodBoolean>),
   limits: z.object({

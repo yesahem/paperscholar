@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { cn } from "../lib/cn";
+import { dialogCloseAction } from "../lib/dialog-close";
 import { Button } from "./button";
 
 export interface DialogProps {
@@ -63,9 +64,12 @@ export function Dialog({
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       onClose={() => {
-        returnFocus.current?.focus();
-        returnFocus.current = null;
-        if (open) onOpenChange(false);
+        const action = dialogCloseAction(ref.current?.open ?? false, open);
+        if (action.restoreFocus) {
+          returnFocus.current?.focus();
+          returnFocus.current = null;
+        }
+        if (action.notify) onOpenChange(false);
       }}
       onCancel={(event) => {
         event.preventDefault();

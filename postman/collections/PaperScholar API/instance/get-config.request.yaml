@@ -12,7 +12,7 @@ scripts:
         const config = pm.response.json();
         pm.expect(config.features).to.have.all.keys(
           'pipeline', 'coldMail', 'interview', 'courses', 'listings',
-          'googleSignIn', 'emailVerification', 'signups'
+          'googleSignIn', 'emailVerification', 'passwordReset', 'signups'
         );
         Object.values(config.features).forEach((on) => pm.expect(on).to.be.a('boolean'));
         pm.expect(config.limits.runsPerDay).to.be.above(0);

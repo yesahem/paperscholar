@@ -2,14 +2,27 @@
  * Long-running entry: local development (`bun dev`) and self-hosting.
  * Serverless hosts use src/index.ts instead.
  */
+import { closeDb, createDb } from "@repo/db";
 import { createContentReader } from "./adapters/content";
+import { createEmailSender } from "./adapters/email/create-email-sender";
 import { createApp } from "./create-app";
 import { createLogger } from "./lib/logger";
 import { loadConfigOrExit } from "./load-config";
 
 const config = loadConfigOrExit();
 const logger = createLogger({ level: config.logLevel });
-const app = createApp({ config, logger, content: createContentReader(config) });
+const db = createDb({ url: config.databaseUrl });
+const app = createApp({
+  config,
+  logger,
+  content: createContentReader(config),
+  db,
+  email: createEmailSender(config.email),
+  // The process outlives each request, so background work just needs its errors logged.
+  runInBackground: (task) => {
+    task.catch((error: unknown) => logger.error("background task failed", { error }));
+  },
+});
 
 const server = Bun.serve({
   port: config.port,
@@ -20,6 +33,7 @@ logger.info("backend listening", {
   url: server.url.href,
   env: config.env,
   version: config.version,
+  email: config.email.driver,
 });
 
 // `bun --hot` re-runs this module on change; register shutdown handlers once.
@@ -27,6 +41,7 @@ if (process.listenerCount("SIGTERM") === 0) {
   const shutdown = async (signal: NodeJS.Signals) => {
     logger.info("backend shutting down", { signal });
     await server.stop();
+    await closeDb(db);
     process.exit(0);
   };
   process.once("SIGTERM", shutdown);

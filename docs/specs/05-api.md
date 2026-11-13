@@ -5,15 +5,15 @@ written as TypeScript types; the real definitions are zod schemas in `packages/s
 
 ## 1. Basics
 
-|                        |                                                  |
-| ---------------------- | ------------------------------------------------ |
-| Base path              | `/api`                                           |
-| Application routes     | `/api/v1/...`                                    |
-| Auth routes            | `/api/auth/...` — owned by Better Auth (spec 06) |
-| Format                 | JSON, UTF-8, `camelCase` keys                    |
-| Authentication         | Session cookie. No bearer tokens.                |
-| Time                   | ISO 8601 UTC strings                             |
-| Unknown request fields | Rejected (`validation_error`)                    |
+|                        |                                                                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base path              | `/api`                                                                                                                                                                                |
+| Application routes     | `/api/v1/...`                                                                                                                                                                         |
+| Auth routes            | `/api/auth/...` — owned by Better Auth (spec 06); errors are Better Auth's `{ code, message }`, not the envelope below. Responses still carry `X-Request-Id`, and 429s `Retry-After`. |
+| Format                 | JSON, UTF-8, `camelCase` keys                                                                                                                                                         |
+| Authentication         | Session cookie. No bearer tokens.                                                                                                                                                     |
+| Time                   | ISO 8601 UTC strings                                                                                                                                                                  |
+| Unknown request fields | Rejected (`validation_error`)                                                                                                                                                         |
 
 ## 2. Application skeleton
 
@@ -75,20 +75,20 @@ type ErrorBody = {
 };
 ```
 
-| HTTP | `code`                   | When                                                | `details`                         |
-| ---- | ------------------------ | --------------------------------------------------- | --------------------------------- |
-| 400  | `validation_error`       | Body, query or params failed validation             | `{ issues: [{ path, message }] }` |
-| 401  | `unauthenticated`        | No valid session                                    | —                                 |
-| 403  | `forbidden`              | Authenticated but not allowed                       | —                                 |
-| 403  | `email_not_verified`     | Action needs a verified email                       | —                                 |
-| 404  | `not_found`              | Resource does not exist, or exists but is not yours | —                                 |
-| 409  | `conflict`               | State conflict, e.g. username taken                 | —                                 |
-| 409  | `submission_in_progress` | A run is already queued or running                  | `{ submissionId }`                |
-| 413  | `payload_too_large`      | Body over the limit                                 | `{ maxBytes }`                    |
-| 429  | `rate_limited`           | Too many requests in the window                     | `{ retryAfterSeconds }`           |
-| 429  | `quota_exceeded`         | Daily or plan quota used up                         | `{ resetsAt }`                    |
-| 500  | `internal_error`         | Unexpected failure                                  | —                                 |
-| 503  | `upstream_unavailable`   | A vendor we depend on is down                       | —                                 |
+| HTTP | `code`                   | When                                                | `details`                                            |
+| ---- | ------------------------ | --------------------------------------------------- | ---------------------------------------------------- |
+| 400  | `validation_error`       | Body, query or params failed validation             | `{ issues: [{ path, message }] }`                    |
+| 401  | `unauthenticated`        | No valid session                                    | —                                                    |
+| 403  | `forbidden`              | Authenticated but not allowed                       | —                                                    |
+| 403  | `email_not_verified`     | Action needs a verified email                       | —                                                    |
+| 404  | `not_found`              | Resource does not exist, or exists but is not yours | —                                                    |
+| 409  | `conflict`               | State conflict, e.g. username taken                 | `{ availableAt }` when a username change is too soon |
+| 409  | `submission_in_progress` | A run is already queued or running                  | `{ submissionId }`                                   |
+| 413  | `payload_too_large`      | Body over the limit                                 | `{ maxBytes }`                                       |
+| 429  | `rate_limited`           | Too many requests in the window                     | `{ retryAfterSeconds }`                              |
+| 429  | `quota_exceeded`         | Daily or plan quota used up                         | `{ resetsAt }`                                       |
+| 500  | `internal_error`         | Unexpected failure                                  | —                                                    |
+| 503  | `upstream_unavailable`   | A vendor we depend on is down                       | —                                                    |
 
 Rules:
 
@@ -320,6 +320,13 @@ type LeaderboardPage = {
 };
 ```
 
+`PATCH /v1/me` (M3): `username` is lowercased and checked against spec 06 §3; a taken
+name is `409 conflict`, and a second change within 30 days is `409 conflict` with
+`details.availableAt`. An empty `bio` clears it. `DELETE /v1/me` with a confirmation
+that is not the username is `400 validation_error` and changes nothing; on success it
+answers `204` with headers that clear the session cookies. Unknown fields, such as `role`,
+are rejected.
+
 Public profile responses never contain email or role. Users with zero solves
 are not listed on the leaderboard.
 
@@ -339,6 +346,7 @@ Public. Tells the web app what this instance offers (spec 13 §4).
     listings: boolean;
     googleSignIn: boolean;
     emailVerification: boolean;
+    passwordReset: boolean; // added in M3
     signups: boolean;
   }
   limits: {
@@ -352,8 +360,10 @@ Public. Tells the web app what this instance offers (spec 13 §4).
 A request to an endpoint of a feature that is off returns `404 not_found`.
 
 A feature is on only when the build contains it **and** the instance is configured for
-it; each becomes configurable in the milestone that builds it (spec 12). As of M2 every
-feature is reported off. `limits.runsPerDay` comes from `RUNS_PER_DAY` (default 100) and
+it; each becomes configurable in the milestone that builds it (spec 12). From M3,
+`signups`, `emailVerification`, `passwordReset` and `googleSignIn` follow the
+configuration; the rest stay off until their milestones. `passwordReset` is separate from
+`emailVerification` because an instance can send email while not requiring verification. `limits.runsPerDay` comes from `RUNS_PER_DAY` (default 100) and
 `limits.codeBytes` is 65 536. The response is public and cached like content.
 
 ### Maintainer endpoints (milestone 6)

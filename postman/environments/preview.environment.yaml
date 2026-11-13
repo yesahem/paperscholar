@@ -5,3 +5,8 @@ values:
     enabled: true
     type: default
     description: Origin of a preview deployment of the web app, which proxies /api. Set with --env-var baseUrl=https://… in CI.
+  - key: webOrigin
+    value: ""
+    enabled: true
+    type: default
+    description: Origin of the preview web app, the WEB_ORIGIN its backend trusts. Usually the same as baseUrl.
