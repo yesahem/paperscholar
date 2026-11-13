@@ -1,0 +1,7 @@
+name: Preview
+values:
+  - key: baseUrl
+    value: ""
+    enabled: true
+    type: default
+    description: Origin of a preview deployment of the web app, which proxies /api. Set with --env-var baseUrl=https://… in CI.

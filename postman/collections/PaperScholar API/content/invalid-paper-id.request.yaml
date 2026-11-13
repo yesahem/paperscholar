@@ -1,0 +1,15 @@
+$kind: http-request
+name: Invalid paper id
+order: 6000
+method: GET
+url: "{{baseUrl}}/api/v1/papers/Not_A_Slug"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is a validation_error naming the parameter', () => {
+        pm.response.to.have.status(400);
+        const { error } = pm.response.json();
+        pm.expect(error.code).to.eql('validation_error');
+        pm.expect(error.details.issues.map((issue) => issue.path)).to.include('paperId');
+      });

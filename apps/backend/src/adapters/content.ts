@@ -1,7 +1,26 @@
-import { CONTENT_INDEX_LOCK, ContentStore } from "@repo/content";
+import { CONTENT_INDEX_LOCK, ContentStore, createReadOnlyLock } from "@repo/content";
 import { closeDb, createAdvisoryLock, createDb } from "@repo/db";
 import { createStorage } from "@repo/storage";
 import type { AppConfig } from "../env";
+
+/**
+ * How long the server trusts its cached copy of content/index.json before
+ * revalidating it. Part of the freshness budget in docs/specs/05-api.md §4.
+ */
+export const SERVER_INDEX_TTL_MS = 10_000;
+
+/**
+ * The content store the API serves learners from. Read-only: it needs no
+ * database and refuses writes, which go through the commands and, from M6,
+ * the maintainer endpoints.
+ */
+export function createContentReader(config: AppConfig): ContentStore {
+  return new ContentStore({
+    storage: createStorage(config.storage),
+    lock: createReadOnlyLock(),
+    indexTtlMs: SERVER_INDEX_TTL_MS,
+  });
+}
 
 export interface ContentServices {
   store: ContentStore;

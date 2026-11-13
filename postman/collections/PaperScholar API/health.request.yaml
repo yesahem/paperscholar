@@ -1,0 +1,18 @@
+$kind: http-request
+name: Health
+order: 1000
+method: GET
+url: "{{baseUrl}}/api/health"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is alive and names its version', () => {
+        pm.response.to.have.status(200);
+        const body = pm.response.json();
+        pm.expect(body.ok).to.eql(true);
+        pm.expect(body.version).to.be.a('string').and.not.empty;
+      });
+      pm.test('is not cached', () => {
+        pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store');
+      });

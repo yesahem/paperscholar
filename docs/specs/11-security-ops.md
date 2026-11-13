@@ -59,6 +59,13 @@ object-src 'none';
   route only.
 - Roll out in report-only mode first, with a report endpoint, then enforce.
 
+> **M2 status.** Sent as `Content-Security-Policy-Report-Only` from `next.config.ts`
+> (`apps/web/lib/security/headers.ts`), reporting to `POST /api/csp-report`. Scripts are
+> allowed with `'unsafe-inline'` instead of a nonce: Next.js applies nonces only to pages
+> rendered per request, and content pages must stay cached (spec 08 §1). Before enforcing,
+> choose between hashes of Next's inline scripts, or per-request rendering of pages that
+> need a strict policy.
+
 The API sets `X-Content-Type-Options`, `Cache-Control` per spec 05 §4, and no CORS headers
 at all: it is not meant to be called from other origins.
 

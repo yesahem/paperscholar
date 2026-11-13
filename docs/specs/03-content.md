@@ -60,7 +60,8 @@ year, URL, summary, tags, who published it and when, and its ordered problem lis
 title, summary, difficulty, type, status). The catalogue, paper pages, statistics and the
 leaderboard need nothing else, so each is served from this one object.
 
-`public.json` adds each problem's description, tutorial, starter and limits.
+`public.json` adds each problem's description, tutorial, starter, limits and
+`helpersInterface` (the helpers' signatures and docstrings, never their bodies).
 `private.json` holds each problem's solution, both test files and helper source.
 
 ### 2.2 Rules
@@ -261,6 +262,10 @@ and in CI before a hosted deploy.
   the conflict instead.
 - A problem removed from the files is marked `retired`, never dropped.
 - Tracks, quiz sets and courses are uploaded the same way.
+
+**`bun run content:status <paper-id> <draft|published|archived>`** changes a paper's
+status in `index.json` without writing a version. Learners see the change within a minute
+(spec 05 §4).
 
 **`bun run content:export <paper-id>`** downloads a paper's current version from storage
 and writes it to `content/` in the file format above. This is how a paper produced by the

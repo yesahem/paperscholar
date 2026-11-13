@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { loadWebEnv } from "./lib/env";
+import { securityHeaders } from "./lib/security/headers";
 
 const env = loadWebEnv();
 
@@ -16,6 +17,19 @@ const nextConfig: NextConfig = {
       {
         source: "/api/:path*",
         destination: `${env.API_ORIGIN}/api/:path*`,
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders({ development: process.env.NODE_ENV === "development" }),
+      },
+      {
+        // Editor files are versioned by the monaco-editor package, not by file name.
+        source: "/monaco/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400" }],
       },
     ];
   },

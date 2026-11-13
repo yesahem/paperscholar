@@ -44,3 +44,6 @@ __pycache__/
 
 # Teardown of a third-party site. Kept local until the maintainer decides to publish it.
 docs/how-it-works.md
+
+# Monaco editor files, copied from node_modules by apps/web/scripts/copy-monaco.ts
+apps/web/public/monaco/

@@ -12,11 +12,14 @@ bun dev                  # from the repository root: web on :3000, backend on :8
 
 ## Layout
 
-| Path                    | Holds                                                    |
-| ----------------------- | -------------------------------------------------------- |
-| `app/`                  | Routes, layouts, `error.tsx`, `not-found.tsx`            |
-| `components/<feature>/` | Components specific to this app, grouped by feature      |
-| `lib/`                  | Environment validation (`env.ts`) and API calls (`api/`) |
+| Path                    | Holds                                                           |
+| ----------------------- | --------------------------------------------------------------- |
+| `app/(site)/`           | Document pages: landing, papers, paper, roadmap, about, legal   |
+| `app/(workspace)/`      | The problem workspace (full-height, no footer)                  |
+| `components/<feature>/` | `content/`, `workspace/`, `layout/`, `theme/`, `legal/`, `og/`  |
+| `lib/`                  | `env.ts`, `api/` (validated fetches), `content/` (pure helpers) |
+| `scripts/`              | `copy-monaco.ts`: self-hosts the editor in `public/monaco/`     |
+| `test/`                 | `bun test` for everything in `lib/`                             |
 
 ## Rules
 
@@ -24,3 +27,8 @@ bun dev                  # from the repository root: web on :3000, backend on :8
 - Import app code through the `@/` alias (`@/lib/env`), packages through `@repo/*`.
 - No secrets here. `API_ORIGIN` is server-only; anything `NEXT_PUBLIC_*` is public.
 - Server-only packages (`@repo/db`, `@repo/storage`, …) are blocked by lint.
+- Browser code (`"use client"` and what it imports) uses `@repo/shared/vocabulary`,
+  `@repo/shared/site` and `zod/mini`, never `@repo/shared` or `zod`: they would add about
+  90 KB of schemas to every page.
+- Content pages have no `loading.tsx`: it would break reading without JavaScript and turn
+  404s into 200s (docs/specs/08-web.md §1).

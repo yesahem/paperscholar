@@ -11,7 +11,7 @@ version.
 | Kind of page                                    | How it renders                                           | Data source                         |
 | ----------------------------------------------- | -------------------------------------------------------- | ----------------------------------- |
 | Landing, about, legal                           | Static                                                   | None                                |
-| Catalogue, paper page, problem page, roadmap    | On the server, cached, revalidated every 60 seconds      | Public content endpoints of the API |
+| Catalogue, paper page, problem page, roadmap    | On the server, cached, revalidated every 30 seconds      | Public content endpoints of the API |
 | Leaderboard, public profile                     | Shell rendered on the server; data loaded in the browser | API                                 |
 | Settings, maintainer screens, anything per-user | Loaded in the browser                                    | API                                 |
 
@@ -25,10 +25,18 @@ Rules:
 - Server Components fetch **public** endpoints only, without cookies. They never read the
   session. All per-user data is fetched in the browser with TanStack Query. This keeps
   every content page cacheable for everyone.
-- Unknown paper or problem IDs render the 404 page.
+- Unknown paper or problem IDs render the 404 page **with HTTP status 404**. Content pages
+  therefore have no `loading.tsx`: a loading boundary starts streaming before the page
+  runs, which turns a 404 into a 200 and hides the content from browsers without
+  JavaScript. They are cached, so a skeleton would rarely show anyway.
+- When the API cannot be reached during `next build`, pages prerendered at build time
+  (landing, catalogue, roadmap, sitemap) render a "not available yet" state and replace it
+  at the first revalidation (`loadAtBuild` in `apps/web/lib/api/content.ts`). At run time a
+  failed refresh keeps serving the last good page.
 - The browser calls the API at same-origin `/api/...` only.
 - `GET /v1/config` is fetched once and decides which navigation items and screens exist
-  on this instance (spec 13 §4).
+  on this instance (spec 13 §4). It is served from M2; the web app starts reading it with
+  the first switchable item, sign-up, in M3.
 
 ### The proxy
 
@@ -82,7 +90,8 @@ apps/web/
   components/              app-specific components
     workspace/             editor, result panel, tabs
   lib/
-    api.ts                 typed Hono client
+    api/                   fetch-json.ts (validated fetch), content.ts (server-only
+                           content reads), health.ts
     auth-client.ts         Better Auth client
     queries.ts             TanStack Query hooks, one per endpoint
     env.ts
@@ -122,7 +131,11 @@ The most important screen. Desktop layout:
 └──────────────────────────────────┴─────────────────────────────────────┘
 ```
 
-Below 900 px wide, the panes stack and the editor becomes a tab alongside the others.
+Below 900 px wide, the panes stack: instructions first, the editor below them.
+
+> **M2 status.** The panes are a fixed 50/50 split; the resizable divider (and
+> `ResizablePanels` in `packages/ui`) arrives with the Results tab in M4. Stacking replaces
+> "the editor becomes a tab", which hid the description while typing on small screens.
 
 ### 5.1 Left pane
 
@@ -248,12 +261,12 @@ editor and results components: a maintainer editing a generated test and pressin
 
 ## 8. States every data-driven view must have
 
-| State      | Requirement                                                  |
-| ---------- | ------------------------------------------------------------ |
-| Loading    | Skeleton matching the final layout. No bare "Loading…" text. |
-| Empty      | A sentence saying what will appear and how to make it appear |
-| Error      | What failed and a retry action. Never a blank area.          |
-| Signed out | What signing in would show, with the sign-in action          |
+| State      | Requirement                                                                                                 |
+| ---------- | ----------------------------------------------------------------------------------------------------------- |
+| Loading    | Skeleton matching the final layout. No bare "Loading…" text. Server-rendered content pages are exempt (§1). |
+| Empty      | A sentence saying what will appear and how to make it appear                                                |
+| Error      | What failed and a retry action. Never a blank area.                                                         |
+| Signed out | What signing in would show, with the sign-in action                                                         |
 
 ## 9. Search engines and sharing
 
@@ -276,8 +289,14 @@ editor and results components: a maintainer editing a generated test and pressin
 | ------------------------------------------------------------------------ | ---------------- |
 | Largest Contentful Paint on a problem page, mid-range laptop, cold cache | < 2.0 s          |
 | JavaScript for content pages before the editor loads                     | < 150 KB gzipped |
-| Editor ready after page load                                             | < 2.5 s          |
-| Cumulative Layout Shift                                                  | < 0.05           |
+
+> **M2 measurement.** 187–208 KB gzipped per content page. About 150 KB of that is the
+> framework runtime (React DOM, the Next.js router and RSC client) present on every
+> page; this app adds about 35–55 KB. The target is not met. Keeping the app's share small
+> is enforced by importing zod-free modules in browser code; reaching the target needs a
+> framework-level change and is tracked for review in a later milestone.
+> | Editor ready after page load | < 2.5 s |
+> | Cumulative Layout Shift | < 0.05 |
 
 The editor bundle is loaded only on the workspace route.
 

@@ -1,0 +1,21 @@
+$kind: http-request
+name: Get config
+order: 1000
+method: GET
+url: "{{baseUrl}}/api/v1/config"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists every feature, the limits and the version', () => {
+        pm.response.to.have.status(200);
+        const config = pm.response.json();
+        pm.expect(config.features).to.have.all.keys(
+          'pipeline', 'coldMail', 'interview', 'courses', 'listings',
+          'googleSignIn', 'emailVerification', 'signups'
+        );
+        Object.values(config.features).forEach((on) => pm.expect(on).to.be.a('boolean'));
+        pm.expect(config.limits.runsPerDay).to.be.above(0);
+        pm.expect(config.limits.codeBytes).to.eql(65536);
+        pm.expect(config.version).to.be.a('string').and.not.empty;
+      });

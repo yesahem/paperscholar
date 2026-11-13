@@ -2,13 +2,14 @@
  * Long-running entry: local development (`bun dev`) and self-hosting.
  * Serverless hosts use src/index.ts instead.
  */
+import { createContentReader } from "./adapters/content";
 import { createApp } from "./create-app";
 import { createLogger } from "./lib/logger";
 import { loadConfigOrExit } from "./load-config";
 
 const config = loadConfigOrExit();
 const logger = createLogger({ level: config.logLevel });
-const app = createApp({ config, logger });
+const app = createApp({ config, logger, content: createContentReader(config) });
 
 const server = Bun.serve({
   port: config.port,

@@ -40,6 +40,7 @@ jobs:
     env:
       DATABASE_URL: postgres://ci:ci@localhost:5432/ci
       API_ORIGIN: http://localhost:8797
+      WEB_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       S3_TEST_ENDPOINT: http://localhost:54331
       S3_TEST_ACCESS_KEY_ID: ci
@@ -95,6 +96,30 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      # The API contract (docs/specs/05-api.md §11), run against a backend serving
+      # the repository's content from local storage.
+      - name: Publish the content library to local storage
+        run: bun run content:sync
+
+      - name: Start the backend
+        working-directory: apps/backend
+        run: |
+          nohup bun src/main.ts > "$RUNNER_TEMP/backend.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl -sf http://localhost:8797/api/health > /dev/null && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/backend.log"
+          exit 1
+
+      - name: Install the Postman CLI
+        run: curl -fsSL https://dl-cli.pstmn.io/install/linux64.sh | sh
+
+      - name: Run the API contract collection
+        run: >-
+          postman collection run "postman/collections/PaperScholar API"
+          -e postman/environments/local.environment.yaml
 
   secrets:
     name: Secret scan

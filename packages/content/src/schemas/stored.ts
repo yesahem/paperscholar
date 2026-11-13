@@ -47,7 +47,8 @@ export const storedProblemPublicSchema = z.object({
   description: z.string(),
   tutorial: z.string().nullable(),
   starter: z.string(),
-  hasHelpers: z.boolean(),
+  /** Signatures and docstrings of the helpers, without their bodies; null without helpers. */
+  helpersInterface: z.string().nullable(),
   /** SHA-256 over every part of the problem, public and private. */
   contentHash: z.string(),
 });

@@ -20,7 +20,7 @@ import {
   problemFiles,
   writeLibrary,
   type LibrarySpec,
-} from "./fixtures";
+} from "../src/testing";
 
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {

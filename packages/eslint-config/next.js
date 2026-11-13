@@ -17,6 +17,8 @@ export const nextJsConfig = [
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored editor files copied into public/ before dev and build.
+    "public/monaco/**",
   ]),
   {
     languageOptions: {

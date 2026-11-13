@@ -10,7 +10,8 @@
     "check-types": "tsc --noEmit",
     "test": "bun test",
     "content:sync": "bun run src/cli/content-sync.ts",
-    "content:export": "bun run src/cli/content-export.ts"
+    "content:export": "bun run src/cli/content-export.ts",
+    "content:status": "bun run src/cli/content-status.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "0.9.1",

@@ -1,0 +1,14 @@
+$kind: collection
+name: Content
+description: Public, cacheable content endpoints (docs/specs/05-api.md §5).
+order: 2000
+scripts:
+  - type: http:afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 200 || pm.response.code === 304) {
+        pm.test('is publicly cacheable with an ETag', () => {
+          pm.expect(pm.response.headers.get('Cache-Control')).to.match(/^public, s-maxage=\d+/);
+          pm.expect(pm.response.headers.get('ETag')).to.match(/^"[0-9a-f]+"$/);
+        });
+      }

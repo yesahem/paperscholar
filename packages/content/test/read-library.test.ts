@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ContentValidationError, readContentLibrary } from "../src";
-import { baseLibrary, problemFiles, writeLibrary, type LibrarySpec } from "./fixtures";
+import {
+  baseLibrary,
+  problemFiles,
+  writeLibrary,
+  type LibrarySpec,
+} from "../src/testing";
 
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {

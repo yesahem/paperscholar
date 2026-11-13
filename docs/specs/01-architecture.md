@@ -68,8 +68,8 @@ browser ──▶ web (cached page) ──▶ on revalidation: GET /api/v1/paper
 ```
 
 Catalogue, paper and problem pages are rendered on the server from the API's public
-content endpoints and cached, with revalidation every 60 seconds. A newly published paper
-appears within a minute, with no redeploy. Cached pages keep being served if the API is
+content endpoints and cached, with revalidation every 30 seconds. A newly published paper
+appears within a minute, with no redeploy (the freshness budget is in spec 05 §4). Cached pages keep being served if the API is
 briefly unavailable.
 
 ### 4.2 Any API call from the browser

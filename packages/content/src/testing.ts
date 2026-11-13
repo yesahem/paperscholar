@@ -1,3 +1,8 @@
+/**
+ * Fixtures for tests of content and of code that serves it: a small library
+ * whose private parts carry a canary string. Exported as `@repo/content/testing`;
+ * never imported by application code.
+ */
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -38,6 +43,16 @@ tags: [deep-learning, fundamentals]
 `;
 
 export type LibrarySpec = Record<string, string | null>;
+
+/** Helpers whose bodies carry the canary; only their signatures may be shown. */
+export const helpersWithCanary = `import numpy as np
+
+
+def clip_below(x: np.ndarray, low: float = 0.0) -> np.ndarray:
+    """Values below \`low\` become \`low\`."""
+    marker = "${CANARY}"
+    return np.maximum(x, low)
+`;
 
 /** A two-paper library with one track. Keys are paths relative to the content root. */
 export function baseLibrary(): LibrarySpec {

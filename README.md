@@ -52,6 +52,9 @@ bun run content:sync
 bun dev
 ```
 
+Hide or show a paper without a redeploy: `bun run content:status <paper-id> draft` (or
+`published`). The site reflects it within a minute.
+
 `http://localhost:3000/api/health` reaches the backend through the web app's proxy.
 
 ## Checks
@@ -63,6 +66,7 @@ bun run check-types    # TypeScript 7
 bun run test           # bun test (database and S3 tests run when configured)
 bun run content:verify # every problem: solution passes, starter fails, tests are sound
 bun run build
+bun run api:contract   # the Postman API contract, against a running backend (postman/README.md)
 ```
 
 CI runs the same checks against a fresh Postgres and an S3-compatible server, and scans for

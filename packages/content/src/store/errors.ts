@@ -21,3 +21,11 @@ export class ContentCorruptError extends Error {
     this.name = "ContentCorruptError";
   }
 }
+
+/** A write was attempted through a store opened for reading only. */
+export class ContentReadOnlyError extends Error {
+  constructor() {
+    super("This content store is read-only; writes need a store with the index lock");
+    this.name = "ContentReadOnlyError";
+  }
+}

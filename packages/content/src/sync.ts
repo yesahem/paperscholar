@@ -143,7 +143,7 @@ export async function syncLibrary(
       paperIds: track.meta.papers,
     })),
   };
-  const existingTracks = await store.getTracks();
+  const existingTracks = await store.getTracks({ fresh: true });
   if (existingTracks?.sourceHash !== tracks.sourceHash) {
     report.tracks = existingTracks ? "updated" : "created";
     if (!dryRun) await store.putTracks(tracks);

@@ -7,6 +7,9 @@ import type { LogLevel } from "./lib/logger";
 /** Default listen port for Bun.serve. Chosen to avoid the common 8787/8080. */
 export const DEFAULT_PORT = 8797;
 
+/** Default daily run allowance per user (docs/specs/11-security-ops.md §3). */
+export const DEFAULT_RUNS_PER_DAY = 100;
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -26,6 +29,12 @@ const envSchema = z
     DATABASE_URL: z
       .url({ protocol: /^postgres(ql)?$/, error: "must be a postgres:// connection URL" })
       .optional(),
+
+    RUNS_PER_DAY: z.coerce
+      .number({ error: "must be a number" })
+      .int("must be a whole number")
+      .min(1, "must be at least 1")
+      .default(DEFAULT_RUNS_PER_DAY),
 
     STORAGE_DRIVER: z.enum(["fs", "r2"]).default("fs"),
     STORAGE_FS_PATH: z.string().trim().min(1).default(".storage"),
@@ -103,6 +112,10 @@ export interface AppConfig {
   databaseUrl: string | null;
   /** Where paper content and uploads live (docs/specs/03-content.md §2.4). */
   storage: StorageConfig;
+  /** Limits published at GET /v1/config and enforced from M4. */
+  limits: {
+    runsPerDay: number;
+  };
 }
 
 /**
@@ -124,5 +137,6 @@ export function loadConfig(
     version: env.APP_VERSION ?? env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "dev",
     databaseUrl: env.DATABASE_URL ?? null,
     storage: storageConfig(env),
+    limits: { runsPerDay: env.RUNS_PER_DAY },
   };
 }

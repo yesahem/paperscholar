@@ -1,0 +1,24 @@
+$kind: http-request
+name: List papers
+order: 1000
+method: GET
+url: "{{baseUrl}}/api/v1/papers"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('returns published papers', () => {
+        pm.response.to.have.status(200);
+        const { items } = pm.response.json();
+        pm.expect(items).to.be.an('array').that.is.not.empty;
+        for (const paper of items) {
+          pm.expect(paper).to.have.all.keys(
+            'id', 'title', 'authors', 'year', 'summary', 'url', 'tags',
+            'problemCount', 'difficultyCounts'
+          );
+          pm.expect(paper.id).to.match(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+          const counts = paper.difficultyCounts;
+          pm.expect(counts.easy + counts.medium + counts.hard).to.eql(paper.problemCount);
+        }
+        pm.collectionVariables.set('paperId', items[0].id);
+      });
