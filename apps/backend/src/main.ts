@@ -6,6 +6,7 @@ import { closeDb, createDb } from "@repo/db";
 import { createAvatarStore } from "./adapters/avatar-store";
 import { createContentReader } from "./adapters/content";
 import { createEmailSender } from "./adapters/email/create-email-sender";
+import { createPipeline } from "./adapters/pipeline";
 import { createSandboxProvider } from "./adapters/sandbox";
 import { createApp } from "./create-app";
 import { createLogger } from "@repo/shared/logger";
@@ -14,18 +15,29 @@ import { loadConfigOrExit } from "./load-config";
 const config = loadConfigOrExit();
 const logger = createLogger({ level: config.logLevel });
 const db = createDb({ url: config.databaseUrl });
+const sandbox = createSandboxProvider(config, logger);
+// The process outlives each request, so background work just needs its errors logged.
+const runInBackground = (task: Promise<unknown>) => {
+  task.catch((error: unknown) => logger.error("background task failed", { error }));
+};
 const app = createApp({
   config,
   logger,
   content: createContentReader(config),
   db,
   email: createEmailSender(config.email),
-  sandbox: createSandboxProvider(config, logger),
+  sandbox,
   avatarStore: createAvatarStore(config),
-  // The process outlives each request, so background work just needs its errors logged.
-  runInBackground: (task) => {
-    task.catch((error: unknown) => logger.error("background task failed", { error }));
-  },
+  // Pipeline tasks started from here keep running in this process; the worker
+  // (bun run worker) polls for them as well.
+  pipeline: createPipeline(config, {
+    db,
+    sandbox,
+    logger,
+    runInBackground,
+    mode: "process",
+  }),
+  runInBackground,
 });
 
 const server = Bun.serve({

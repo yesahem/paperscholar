@@ -45,6 +45,17 @@ x-backend-environment: &backend-environment
   R2_BUCKET: ${R2_BUCKET:-}
   R2_PUBLIC_BUCKET: ${R2_PUBLIC_BUCKET:-}
   R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  LLM_MODEL: ${LLM_MODEL:-}
+  FEATURE_PIPELINE: ${FEATURE_PIPELINE:-}
+  PIPELINE_MAX_PDF_MB: ${PIPELINE_MAX_PDF_MB:-}
+  PIPELINE_MAX_PDF_PAGES: ${PIPELINE_MAX_PDF_PAGES:-}
+  PIPELINE_MIN_STEPS: ${PIPELINE_MIN_STEPS:-}
+  PIPELINE_MAX_STEPS: ${PIPELINE_MAX_STEPS:-}
+  PIPELINE_WRITE_ATTEMPTS: ${PIPELINE_WRITE_ATTEMPTS:-}
+  PIPELINE_CONCURRENT_INGESTIONS: ${PIPELINE_CONCURRENT_INGESTIONS:-}
+  PIPELINE_INGESTIONS_PER_DAY: ${PIPELINE_INGESTIONS_PER_DAY:-}
+  PIPELINE_OUTPUT_TOKEN_BUDGET: ${PIPELINE_OUTPUT_TOKEN_BUDGET:-}
 
 services:
   # The only service published to the outside.
@@ -105,7 +116,7 @@ services:
       runner:
         condition: service_started
 
-  # Scheduled work: the daily cleanup (and, from M6, the paper pipeline).
+  # Scheduled work: the daily cleanup and, with ANTHROPIC_API_KEY, the paper pipeline.
   worker:
     image: paperscholar-backend
     restart: unless-stopped

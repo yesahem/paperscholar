@@ -3,11 +3,15 @@ import type { ContentSource, PaperStatus } from "@repo/shared";
 import type { z } from "zod";
 import {
   contentIndexSchema,
+  paperDraftPrivateDocSchema,
+  paperDraftPublicDocSchema,
   paperPrivateDocSchema,
   paperPublicDocSchema,
   tracksDocSchema,
   type ContentIndex,
   type IndexEntry,
+  type PaperDraftPrivateDoc,
+  type PaperDraftPublicDoc,
   type PaperMetadata,
   type PaperPrivateDoc,
   type PaperPublicDoc,
@@ -23,6 +27,7 @@ import {
 import {
   CONTENT_INDEX_KEY,
   indexHistoryKey,
+  paperDraftKey,
   paperVersionKey,
   TRACKS_KEY,
   type DocumentPart,
@@ -54,6 +59,19 @@ export interface PublishInput {
   paper: PaperMetadata;
   problems: StoredProblemPublic[];
   privateProblems: StoredProblemPrivate[];
+}
+
+export interface DraftInput {
+  paperId: string;
+  ingestionId: string | null;
+  paper: PaperMetadata;
+  problems: StoredProblemPublic[];
+  privateProblems: StoredProblemPrivate[];
+}
+
+export interface PaperDraft {
+  public: PaperDraftPublicDoc;
+  private: PaperDraftPrivateDoc;
 }
 
 interface CachedIndex {
@@ -91,6 +109,18 @@ function parseJson<Schema extends z.ZodType>(
   const parsed = schema.safeParse(raw);
   if (!parsed.success) throw new ContentCorruptError(key, parsed.error.message);
   return parsed.data;
+}
+
+function assertMatchingProblems(
+  paperId: string,
+  problems: readonly StoredProblemPublic[],
+  privateProblems: readonly StoredProblemPrivate[],
+): void {
+  const publicIds = problems.map((problem) => problem.id).join(",");
+  const privateIds = privateProblems.map((problem) => problem.id).join(",");
+  if (publicIds !== privateIds) {
+    throw new Error(`Public and private problems of ${paperId} do not match`);
+  }
 }
 
 /**
@@ -164,11 +194,7 @@ export class ContentStore {
    * orphaned version number, which is skipped.
    */
   async publishVersion(input: PublishInput): Promise<IndexEntry> {
-    const publicIds = input.problems.map((problem) => problem.id).join(",");
-    const privateIds = input.privateProblems.map((problem) => problem.id).join(",");
-    if (publicIds !== privateIds) {
-      throw new Error(`Public and private problems of ${input.paperId} do not match`);
-    }
+    assertMatchingProblems(input.paperId, input.problems, input.privateProblems);
 
     return this.lock.withLock(async () => {
       const snapshot = await this.readIndexForWrite();
@@ -264,6 +290,66 @@ export class ContentStore {
       await this.commitIndex(snapshot, entry);
       return entry;
     });
+  }
+
+  /**
+   * Writes or replaces a paper's draft (docs/specs/03-content.md §3). Drafts
+   * are never cached and never served to learners. The private part is written
+   * first, so a draft whose public part exists is complete.
+   */
+  async putDraft(input: DraftInput): Promise<PaperDraft> {
+    assertMatchingProblems(input.paperId, input.problems, input.privateProblems);
+    const draft: PaperDraft = {
+      private: paperDraftPrivateDocSchema.parse({
+        schemaVersion: 1,
+        paperId: input.paperId,
+        problems: input.privateProblems,
+      }),
+      public: paperDraftPublicDocSchema.parse({
+        schemaVersion: 1,
+        paperId: input.paperId,
+        ingestionId: input.ingestionId,
+        updatedAt: this.now().toISOString(),
+        paper: input.paper,
+        problems: input.problems,
+      }),
+    };
+    await this.storage.put(
+      paperDraftKey(input.paperId, "private"),
+      JSON.stringify(draft.private),
+      { contentType: JSON_TYPE },
+    );
+    await this.storage.put(
+      paperDraftKey(input.paperId, "public"),
+      JSON.stringify(draft.public),
+      { contentType: JSON_TYPE },
+    );
+    return draft;
+  }
+
+  /** The paper's draft, or null when it has none. */
+  async getDraft(paperId: string): Promise<PaperDraft | null> {
+    const publicKey = paperDraftKey(paperId, "public");
+    const publicObject = await this.storage.get(publicKey);
+    if (!publicObject) return null;
+    const privateKey = paperDraftKey(paperId, "private");
+    const privateObject = await this.storage.get(privateKey);
+    if (!privateObject) throw new ContentCorruptError(privateKey, "missing beside its public part");
+    return {
+      public: parseJson(publicKey, publicObject.body, paperDraftPublicDocSchema),
+      private: parseJson(privateKey, privateObject.body, paperDraftPrivateDocSchema),
+    };
+  }
+
+  /** Whether a draft exists under this paper id. */
+  async hasDraft(paperId: string): Promise<boolean> {
+    return (await this.storage.head(paperDraftKey(paperId, "public"))) !== null;
+  }
+
+  /** Deletes a draft. Deleting a missing draft is not an error. */
+  async deleteDraft(paperId: string): Promise<void> {
+    await this.storage.delete(paperDraftKey(paperId, "public"));
+    await this.storage.delete(paperDraftKey(paperId, "private"));
   }
 
   /** Learning tracks, cached like the index. `fresh` bypasses the cache. */

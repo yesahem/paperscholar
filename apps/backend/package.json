@@ -15,13 +15,17 @@
     "content:status": "bun run src/cli/content-status.ts",
     "admin:grant": "bun run src/cli/admin-grant.ts",
     "admin:password": "bun run src/cli/admin-password.ts",
-    "auth:schema": "auth generate --config scripts/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes && bun scripts/auth-schema-timestamptz.ts ../../packages/db/src/schema/auth.ts && prettier --write ../../packages/db/src/schema/auth.ts"
+    "auth:schema": "auth generate --config scripts/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes && bun scripts/auth-schema-timestamptz.ts ../../packages/db/src/schema/auth.ts && prettier --write ../../packages/db/src/schema/auth.ts",
+    "paper:ingest": "bun run src/cli/paper-ingest.ts",
+    "paper:status": "bun run src/cli/paper-status.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.8.0",
     "@better-auth/core": "1.7.22",
     "@hono/zod-validator": "0.9.1",
     "@repo/content": "*",
     "@repo/db": "*",
+    "@repo/pipeline": "*",
     "@repo/runner": "*",
     "@repo/shared": "*",
     "@repo/storage": "*",

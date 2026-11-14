@@ -93,3 +93,48 @@ describe("a read-only store", () => {
     expect((await reader.getEntry("second-paper"))?.status).toBe("draft");
   });
 });
+
+describe("ContentStore drafts", () => {
+  test("a draft is written, read back and deleted without touching the index", async () => {
+    const { writer } = await syncedStorage();
+    const live = await writer.getEntry("second-paper");
+    const doc = await writer.getPublicDoc("second-paper", live?.version ?? 1);
+    const privateDoc = await writer.getPrivateDoc("second-paper", live?.version ?? 1);
+    const indexBefore = await writer.getIndex({ fresh: true });
+
+    expect(await writer.getDraft("new-paper")).toBeNull();
+    const written = await writer.putDraft({
+      paperId: "new-paper",
+      ingestionId: "0193a1b2-0000-7000-8000-000000000001",
+      paper: doc.paper,
+      problems: doc.problems,
+      privateProblems: privateDoc.problems,
+    });
+
+    expect(await writer.hasDraft("new-paper")).toBe(true);
+    expect(await writer.getDraft("new-paper")).toEqual(written);
+    expect(written.public.problems.map((problem) => problem.id)).toEqual(
+      doc.problems.map((problem) => problem.id),
+    );
+    expect(await writer.getIndex({ fresh: true })).toEqual(indexBefore);
+
+    await writer.deleteDraft("new-paper");
+    await writer.deleteDraft("new-paper");
+    expect(await writer.getDraft("new-paper")).toBeNull();
+  });
+
+  test("public and private problems must match", async () => {
+    const { writer } = await syncedStorage();
+    const live = await writer.getEntry("second-paper");
+    const doc = await writer.getPublicDoc("second-paper", live?.version ?? 1);
+    await expect(
+      writer.putDraft({
+        paperId: "new-paper",
+        ingestionId: null,
+        paper: doc.paper,
+        problems: doc.problems,
+        privateProblems: [],
+      }),
+    ).rejects.toThrow("do not match");
+  });
+});

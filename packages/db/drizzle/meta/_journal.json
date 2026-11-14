@@ -43,6 +43,13 @@
       "when": 1794650897561,
       "tag": "0005_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794660884824,
+      "tag": "0006_pipeline",
+      "breakpoints": true
     }
   ]
 }

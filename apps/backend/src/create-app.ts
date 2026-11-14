@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import type { AvatarStore } from "./adapters/avatar-store";
+import type { Pipeline } from "./adapters/pipeline";
 import type { EmailSender } from "./adapters/email/types";
 import { createAuth } from "./auth/auth";
 import { verifiesEmail, type AppConfig } from "./env";
@@ -56,6 +57,8 @@ export interface AppDependencies {
   sandbox: SandboxProvider;
   /** Where avatars are kept (`createAvatarStore`). */
   avatarStore: AvatarStore;
+  /** The paper pipeline (`createPipeline`); null when the instance has no model. */
+  pipeline: Pipeline | null;
   /**
    * Keeps work going after the response is sent. Serverless hosts must keep
    * the function alive for it (`waitUntil`); a long-running server need not.
@@ -75,6 +78,7 @@ export function createApp({
   email,
   sandbox,
   avatarStore,
+  pipeline,
   runInBackground,
 }: AppDependencies) {
   const app = new Hono<AppEnv>();
@@ -148,9 +152,10 @@ export function createApp({
     .route("/auth", authRoutes(auth, config.webOrigin))
     .route(
       "/internal",
-      internalRoutes(config.internalSecret, () =>
-        runCleanup({ db, submissions, logger }),
-      ),
+      internalRoutes(config.internalSecret, {
+        cleanup: () => runCleanup({ db, submissions, logger }),
+        pipeline: pipeline?.runner ?? null,
+      }),
     )
     .route("/v1", v1);
 

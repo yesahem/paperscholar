@@ -3,6 +3,7 @@ import {
   envListSchema,
   httpOriginSchema,
   parseEnv,
+  PIPELINE_DEFAULTS,
 } from "@repo/shared";
 import type { StorageConfig } from "@repo/storage";
 import { resolve } from "node:path";
@@ -30,7 +31,11 @@ export const DEFAULT_AUTH_RATE_LIMIT_WINDOW_SECONDS = 600;
 /** Shortest accepted BETTER_AUTH_SECRET. */
 export const MIN_AUTH_SECRET_LENGTH = 32;
 
+/** The model the pipeline uses unless LLM_MODEL says otherwise (docs/specs/09-paper-pipeline.md §14). */
+export const DEFAULT_LLM_MODEL = "claude-opus-5-5";
+
 const EMAIL_DRIVERS = ["none", "log", "resend", "smtp"] as const;
+const LLM_DRIVERS = ["anthropic", "fake"] as const;
 const RUNNER_PROVIDERS = ["local", "http", "vercel"] as const;
 
 const positiveCount = (fallback: number) =>
@@ -93,6 +98,19 @@ const envSchema = z
     VERCEL_TOKEN: optionalText,
 
     INTERNAL_SECRET: sharedSecret("openssl rand -hex 32"),
+
+    ANTHROPIC_API_KEY: optionalText,
+    LLM_DRIVER: z.enum(LLM_DRIVERS).optional(),
+    LLM_MODEL: z.string().trim().min(1).default(DEFAULT_LLM_MODEL),
+    FEATURE_PIPELINE: envBooleanSchema.default(true),
+    PIPELINE_MAX_PDF_MB: positiveCount(PIPELINE_DEFAULTS.maxPdfBytes / 1024 / 1024),
+    PIPELINE_MAX_PDF_PAGES: positiveCount(PIPELINE_DEFAULTS.maxPdfPages),
+    PIPELINE_MIN_STEPS: positiveCount(PIPELINE_DEFAULTS.minSteps),
+    PIPELINE_MAX_STEPS: positiveCount(PIPELINE_DEFAULTS.maxSteps),
+    PIPELINE_WRITE_ATTEMPTS: positiveCount(PIPELINE_DEFAULTS.writeAttempts),
+    PIPELINE_CONCURRENT_INGESTIONS: positiveCount(PIPELINE_DEFAULTS.concurrentIngestions),
+    PIPELINE_INGESTIONS_PER_DAY: positiveCount(PIPELINE_DEFAULTS.ingestionsPerDay),
+    PIPELINE_OUTPUT_TOKEN_BUDGET: positiveCount(PIPELINE_DEFAULTS.outputTokenBudget),
 
     STORAGE_DRIVER: z.enum(["fs", "r2"]).default("fs"),
     STORAGE_FS_PATH: z.string().trim().min(1).default(".storage"),
@@ -233,6 +251,24 @@ const envSchema = z
       });
     }
 
+    const llm = llmDriver(env);
+    if (llm === "anthropic") require("ANTHROPIC_API_KEY", "when LLM_DRIVER is anthropic");
+    if (llm === "fake" && env.NODE_ENV === "production") {
+      context.addIssue({
+        code: "custom",
+        path: ["LLM_DRIVER"],
+        message:
+          "cannot be fake in production: it writes the same demonstration paper every time",
+      });
+    }
+    if (env.PIPELINE_MIN_STEPS > env.PIPELINE_MAX_STEPS) {
+      context.addIssue({
+        code: "custom",
+        path: ["PIPELINE_MIN_STEPS"],
+        message: "must not be more than PIPELINE_MAX_STEPS",
+      });
+    }
+
     const driver = emailDriver(env);
     if (driver === "log" && env.NODE_ENV === "production") {
       context.addIssue({
@@ -262,6 +298,15 @@ type EmailDriver = (typeof EMAIL_DRIVERS)[number];
 function emailDriver(env: Pick<Env, "EMAIL_DRIVER" | "NODE_ENV">): EmailDriver {
   return env.EMAIL_DRIVER ?? (env.NODE_ENV === "development" ? "log" : "none");
 }
+
+/** The model behind the pipeline: Anthropic when a key is set, otherwise none. */
+function llmDriver(
+  env: Pick<Env, "LLM_DRIVER" | "ANTHROPIC_API_KEY">,
+): LlmDriver | undefined {
+  return env.LLM_DRIVER ?? (env.ANTHROPIC_API_KEY ? "anthropic" : undefined);
+}
+
+type LlmDriver = (typeof LLM_DRIVERS)[number];
 
 /** Outside production, runs default to the local provider; production must choose. */
 function runnerProvider(
@@ -393,6 +438,59 @@ function runnerConfig(env: Env): RunnerConfig {
   }
 }
 
+/** The model the pipeline calls (docs/specs/09-paper-pipeline.md §14). */
+export type LlmConfig =
+  | { driver: "anthropic"; apiKey: string; model: string }
+  | { driver: "fake"; model: string };
+
+/** Limits of docs/specs/09-paper-pipeline.md §18, from the PIPELINE_* variables. */
+export interface PipelineLimits {
+  maxPdfBytes: number;
+  maxPdfPages: number;
+  minSteps: number;
+  maxSteps: number;
+  writeAttempts: number;
+  concurrentIngestions: number;
+  ingestionsPerDay: number;
+  outputTokenBudget: number;
+}
+
+export interface PipelineConfig {
+  /** Null when no model is configured: the pipeline is off. */
+  llm: LlmConfig | null;
+  /** FEATURE_PIPELINE=false turns the pipeline off even with a model. */
+  enabled: boolean;
+  limits: PipelineLimits;
+}
+
+function pipelineConfig(env: Env): PipelineConfig {
+  const driver = llmDriver(env);
+  const llm: LlmConfig | null =
+    driver === "anthropic"
+      ? {
+          driver,
+          apiKey: present(env.ANTHROPIC_API_KEY, "ANTHROPIC_API_KEY"),
+          model: env.LLM_MODEL,
+        }
+      : driver === "fake"
+        ? { driver, model: "fake-demo" }
+        : null;
+  return {
+    llm,
+    enabled: llm !== null && env.FEATURE_PIPELINE,
+    limits: {
+      maxPdfBytes: env.PIPELINE_MAX_PDF_MB * 1024 * 1024,
+      maxPdfPages: env.PIPELINE_MAX_PDF_PAGES,
+      minSteps: env.PIPELINE_MIN_STEPS,
+      maxSteps: env.PIPELINE_MAX_STEPS,
+      writeAttempts: env.PIPELINE_WRITE_ATTEMPTS,
+      concurrentIngestions: env.PIPELINE_CONCURRENT_INGESTIONS,
+      ingestionsPerDay: env.PIPELINE_INGESTIONS_PER_DAY,
+      outputTokenBudget: env.PIPELINE_OUTPUT_TOKEN_BUDGET,
+    },
+  };
+}
+
 export interface LimitsConfig {
   /** Submissions per user per UTC day; internal errors are not counted. */
   runsPerDay: number;
@@ -444,6 +542,8 @@ export interface AppConfig {
   internalSecret: string | null;
   auth: AuthConfig;
   email: EmailConfig;
+  /** The paper pipeline: its model and limits. */
+  pipeline: PipelineConfig;
 }
 
 /**
@@ -494,6 +594,7 @@ export function loadConfig(
       trustedProxies: env.TRUSTED_PROXIES,
     },
     email: emailConfig(env),
+    pipeline: pipelineConfig(env),
   };
 }
 

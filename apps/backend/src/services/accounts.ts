@@ -1,4 +1,4 @@
-import { and, count, eq, ne, schema, type Database } from "@repo/db";
+import { and, count, eq, isUniqueViolation, ne, schema, type Database } from "@repo/db";
 import {
   normaliseUsername,
   PASSWORD_MAX_LENGTH,
@@ -30,15 +30,6 @@ export interface AccountsDependencies {
   avatars: Pick<AvatarStore, "url" | "delete">;
   logger: Logger;
   now?: () => Date;
-}
-
-/** Postgres reports a unique-constraint violation with SQLSTATE 23505. */
-export function isUniqueViolation(error: unknown): boolean {
-  for (let current = error; current instanceof Error; current = current.cause) {
-    const fields = current as Error & { errno?: unknown; code?: unknown };
-    if (fields.errno === "23505" || fields.code === "23505") return true;
-  }
-  return false;
 }
 
 /** When a username last changed at `changedAt` may change again. */

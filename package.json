@@ -21,7 +21,9 @@
     "runner:adversarial": "bun run --cwd packages/runner runner:adversarial",
     "admin:grant": "bun run --cwd apps/backend admin:grant",
     "admin:password": "bun run --cwd apps/backend admin:password",
-    "auth:schema": "bun run --filter backend auth:schema"
+    "auth:schema": "bun run --filter backend auth:schema",
+    "paper:ingest": "bun run --cwd apps/backend paper:ingest --base \"$PWD\"",
+    "paper:status": "bun run --cwd apps/backend paper:status"
   },
   "devDependencies": {
     "prettier": "3.9.6",
