@@ -19,7 +19,8 @@ export interface LlmClient {
 }
 
 /** What each call is for: selects the prompt, and lets fakes answer by purpose. */
-export type LlmPurpose = "read" | "plan" | "write" | "mutants" | "solve" | "fidelity";
+export type LlmPurpose =
+  "read" | "plan" | "write" | "mutants" | "equivalence" | "solve" | "fidelity";
 
 /** How hard the model should think (§14: high for planning and writing). */
 export type LlmEffort = "low" | "medium" | "high";

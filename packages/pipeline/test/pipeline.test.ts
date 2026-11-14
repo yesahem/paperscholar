@@ -113,7 +113,19 @@ describe.skipIf(!DATABASE_URL || !hasPython)("the pipeline with the fake model",
     ]);
 
     // Tokens are counted, and every call after the first reads the cached prefix.
-    expect(state?.usage.calls).toBe(6);
+    // read, plan, and per step: write, mutants, solve, fidelity; plus one
+    // equivalence judgement for softmax's surviving mutant.
+    expect(state?.usage.calls).toBe(19);
+    expect(
+      deps.llm.calls
+        .filter((call) => call.purpose === "equivalence")
+        .map((call) => call.subject),
+    ).toEqual(["softmax"]);
+    // The solver works alone: no paper, no outline, no plan.
+    for (const call of deps.llm.calls.filter((call) => call.purpose === "solve")) {
+      expect(call).toMatchObject({ hasDocument: false, context: 0 });
+      expect(call.prompt).not.toContain("solution.py");
+    }
     const after = await getIngestionState(harness.db, id);
     expect(after?.usage.cacheReadTokens).toBeGreaterThan(0);
     expect(deps.llm.uploads).toHaveLength(1);

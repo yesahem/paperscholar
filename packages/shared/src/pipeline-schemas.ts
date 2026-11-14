@@ -171,6 +171,63 @@ export const checkOutcomeSchema = z.object({
 });
 export type CheckOutcome = z.infer<typeof checkOutcomeSchema>;
 
+// ── Stage 4: the model-backed checks (V7–V9) ──────────────────────────────────
+
+/** What the model returns for V7: plausible wrong implementations. */
+export const mutantsAnswerSchema = z.object({
+  mutants: z.array(z.object({ description: z.string().min(1), code: z.string().min(1) })),
+});
+export type MutantsAnswer = z.infer<typeof mutantsAnswerSchema>;
+
+/** The model's judgement of mutants that survived: equivalent, or the tests are weak. */
+export const equivalenceAnswerSchema = z.object({
+  judgements: z.array(
+    z.object({ index: z.number().int(), equivalent: z.boolean(), reason: z.string() }),
+  ),
+});
+export type EquivalenceAnswer = z.infer<typeof equivalenceAnswerSchema>;
+
+/** What the independent solver of V8 returns. */
+export const solveAnswerSchema = z.object({ solution: z.string().min(1) });
+export type SolveAnswer = z.infer<typeof solveAnswerSchema>;
+
+export const fidelityIssueSchema = z.object({
+  severity: z.enum(["blocking", "note"]),
+  paperRef: z.string(),
+  summary: z.string().min(1),
+});
+export type FidelityIssue = z.infer<typeof fidelityIssueSchema>;
+
+/** What the reviewer of V9 returns. */
+export const fidelityAnswerSchema = z.object({ issues: z.array(fidelityIssueSchema) });
+export type FidelityAnswer = z.infer<typeof fidelityAnswerSchema>;
+
+/**
+ * One mutant and what the tests made of it. `invalid`: it crashed before any
+ * test ran or broke the import policy, so it says nothing about the tests.
+ */
+export const mutantResultSchema = z.object({
+  description: z.string(),
+  code: z.string(),
+  outcome: z.enum(["killed", "survived", "equivalent", "invalid"]),
+  /** The tests that failed it, when killed. */
+  killedBy: z.array(z.string()),
+  /** Why it was judged equivalent, or why it is invalid. */
+  reason: z.string().nullable(),
+});
+export type MutantResult = z.infer<typeof mutantResultSchema>;
+
+/** The independent solver's run (V8). */
+export const solveResultSchema = z.object({
+  passed: z.boolean(),
+  /** One or two: a second try sees only the failing tests' names and messages. */
+  attempts: z.number().int(),
+  solution: z.string(),
+  /** Failing tests of the last attempt, as a learner would see them. */
+  failures: z.array(z.string()),
+});
+export type SolveResult = z.infer<typeof solveResultSchema>;
+
 /** The evidence of one verification of one attempt. */
 export const verificationSchema = z.object({
   passed: z.boolean(),
@@ -182,6 +239,12 @@ export const verificationSchema = z.object({
   verifiedAt: z.iso.datetime({ offset: true }),
   /** Hash of the files that were checked, so edits invalidate the result. */
   filesHash: z.string(),
+  /** V7's mutants, when it ran. */
+  mutants: z.array(mutantResultSchema).nullable().default(null),
+  /** V8's solver, when it ran. */
+  solve: solveResultSchema.nullable().default(null),
+  /** V9's issues, when it ran; notes are shown to the reviewer. */
+  fidelity: z.array(fidelityIssueSchema).nullable().default(null),
 });
 export type Verification = z.infer<typeof verificationSchema>;
 

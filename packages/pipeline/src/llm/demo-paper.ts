@@ -487,6 +487,106 @@ ${CROSS_ENTROPY_SOURCE}`,
   },
 };
 
+const mutant = (description: string, body: string, imports = "import numpy as np") => ({
+  description,
+  code: `${imports}\n\n\n${body}\n`,
+});
+const withCrossEntropy = "import numpy as np\nfrom helpers import cross_entropy";
+const withSoftmax = "import numpy as np\nfrom helpers import softmax";
+
+/**
+ * V7's mutants for each demo step: real wrong implementations the demo tests
+ * catch, and one (in softmax) that is equivalent to the reference.
+ */
+export const DEMO_MUTANTS: Record<string, { description: string; code: string }[]> = {
+  relu: [
+    mutant("returns x unchanged", "def relu(x):\n    return x"),
+    mutant(
+      "clips positive values instead of negative ones",
+      "def relu(x):\n    return np.minimum(x, 0)",
+    ),
+    mutant("takes the absolute value", "def relu(x):\n    return np.abs(x)"),
+    mutant("modifies the input in place", "def relu(x):\n    x[x < 0] = 0\n    return x"),
+    mutant("returns a list", "def relu(x):\n    return list(np.maximum(x, 0))"),
+  ],
+  softmax: [
+    mutant(
+      "normalises over the whole array instead of along the axis",
+      "def softmax(x, axis=-1):\n    e = np.exp(x - np.max(x))\n    return e / e.sum()",
+    ),
+    mutant(
+      "does not subtract the maximum, so large scores overflow",
+      "def softmax(x, axis=-1):\n    e = np.exp(x)\n    return e / np.sum(e, axis=axis, keepdims=True)",
+    ),
+    mutant(
+      "ignores the axis argument",
+      "def softmax(x, axis=-1):\n    e = np.exp(x - np.max(x, axis=-1, keepdims=True))\n    return e / np.sum(e, axis=-1, keepdims=True)",
+    ),
+    mutant(
+      "returns the exponentials without normalising",
+      "def softmax(x, axis=-1):\n    return np.exp(x - np.max(x, axis=axis, keepdims=True))",
+    ),
+    mutant(
+      "subtracts the global maximum instead of each slice's",
+      "def softmax(x, axis=-1):\n    e = np.exp(x - np.max(x))\n    return e / np.sum(e, axis=axis, keepdims=True)",
+    ),
+  ],
+  "cross-entropy": [
+    mutant(
+      "sums over examples instead of averaging",
+      "def cross_entropy(logits, labels):\n    p = softmax(logits, axis=-1)\n    return float(-np.sum(np.log(p[np.arange(logits.shape[0]), labels])))",
+      withSoftmax,
+    ),
+    mutant(
+      "always scores the first class",
+      "def cross_entropy(logits, labels):\n    p = softmax(logits, axis=-1)\n    return float(-np.mean(np.log(p[:, 0])))",
+      withSoftmax,
+    ),
+    mutant(
+      "returns the loss of each example instead of their mean",
+      "def cross_entropy(logits, labels):\n    p = softmax(logits, axis=-1)\n    return -np.log(p[np.arange(logits.shape[0]), labels])",
+      withSoftmax,
+    ),
+    mutant(
+      "takes the log of the scores instead of the probabilities",
+      "def cross_entropy(logits, labels):\n    return float(-np.mean(logits[np.arange(logits.shape[0]), labels]))",
+      withSoftmax,
+    ),
+    mutant(
+      "is off by one in the label index",
+      "def cross_entropy(logits, labels):\n    p = softmax(logits, axis=-1)\n    return float(-np.mean(np.log(p[np.arange(logits.shape[0]), labels - 1])))",
+      withSoftmax,
+    ),
+  ],
+  "linear-classifier-loss": [
+    mutant(
+      "multiplies w @ x",
+      "def linear_classifier_loss(x, w, b, labels):\n    return cross_entropy(w @ x + b, labels)",
+      withCrossEntropy,
+    ),
+    mutant(
+      "forgets the bias",
+      "def linear_classifier_loss(x, w, b, labels):\n    return cross_entropy(x @ w, labels)",
+      withCrossEntropy,
+    ),
+    mutant(
+      "subtracts the bias",
+      "def linear_classifier_loss(x, w, b, labels):\n    return cross_entropy(x @ w - b, labels)",
+      withCrossEntropy,
+    ),
+    mutant(
+      "doubles the loss",
+      "def linear_classifier_loss(x, w, b, labels):\n    return 2 * cross_entropy(x @ w + b, labels)",
+      withCrossEntropy,
+    ),
+    mutant(
+      "transposes the scores",
+      "def linear_classifier_loss(x, w, b, labels):\n    return cross_entropy((x @ w).T + b, labels)",
+      withCrossEntropy,
+    ),
+  ],
+};
+
 /** The fake model's answers for the demo paper, by purpose. */
 export function demoPaperAnswers(
   overrides: Partial<Record<LlmPurpose, ScriptedAnswer>> = {},
@@ -500,6 +600,34 @@ export function demoPaperAnswers(
       const answer: WriteAnswer = { files, notes: "Demo files." };
       return answer;
     },
+    mutants: (request) => ({ mutants: DEMO_MUTANTS[request.subject ?? ""] ?? [] }),
+    // Only a mutant that subtracts a different constant is equivalent.
+    equivalence: (request) => ({
+      judgements: [...request.prompt.matchAll(/Mutant (\d+): ([^\n]*)/g)].map(
+        (match) => ({
+          index: Number(match[1]),
+          equivalent: (match[2] ?? "").includes("global maximum"),
+          reason: (match[2] ?? "").includes("global maximum")
+            ? "the subtracted constant cancels in the division"
+            : "it gives different results",
+        }),
+      ),
+    }),
+    // A careful reader of each demo description writes the reference solution.
+    solve: (request) => ({ solution: DEMO_FILES[request.subject ?? ""]?.solution ?? "" }),
+    fidelity: (request) => ({
+      issues:
+        request.subject === "linear-classifier-loss"
+          ? [
+              {
+                severity: "note",
+                paperRef: "§4",
+                summary:
+                  "The paper also trains the classifier; the step stops at the loss.",
+              },
+            ]
+          : [],
+    }),
     ...overrides,
   };
 }

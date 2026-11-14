@@ -1,7 +1,13 @@
 /// <reference path="./text-modules.d.ts" />
+import equivalenceTemplate from "../prompts/equivalence.md" with { type: "text" };
+import fidelityTemplate from "../prompts/fidelity.md" with { type: "text" };
+import mutantsTemplate from "../prompts/mutants.md" with { type: "text" };
 import planTemplate from "../prompts/plan.md" with { type: "text" };
 import readTemplate from "../prompts/read.md" with { type: "text" };
 import repairTemplate from "../prompts/repair.md" with { type: "text" };
+import solveRetryTemplate from "../prompts/solve-retry.md" with { type: "text" };
+import solveSystemPrompt from "../prompts/solve-system.md" with { type: "text" };
+import solveTemplate from "../prompts/solve.md" with { type: "text" };
 import systemPrompt from "../prompts/system.md" with { type: "text" };
 import writeTemplate from "../prompts/write.md" with { type: "text" };
 
@@ -10,7 +16,7 @@ import writeTemplate from "../prompts/write.md" with { type: "text" };
  * ingestion. Change it with any prompt change, and run the eval
  * (docs/specs/09-paper-pipeline.md §14, §18).
  */
-export const PROMPT_VERSION = "2026-11-14.1";
+export const PROMPT_VERSION = "2026-11-14.2";
 
 export const PROMPTS = {
   system: systemPrompt,
@@ -18,6 +24,13 @@ export const PROMPTS = {
   plan: planTemplate,
   write: writeTemplate,
   repair: repairTemplate,
+  mutants: mutantsTemplate,
+  equivalence: equivalenceTemplate,
+  /** The V8 solver's own system prompt: it shares nothing with the writer. */
+  solveSystem: solveSystemPrompt,
+  solve: solveTemplate,
+  solveRetry: solveRetryTemplate,
+  fidelity: fidelityTemplate,
 } as const;
 
 /** Fills `{{name}}` placeholders. Every placeholder must be given, and every value used. */
