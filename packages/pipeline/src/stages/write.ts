@@ -7,6 +7,7 @@ import { readJson, writeJson } from "../objects";
 import { PROMPTS, render } from "../prompts";
 import {
   attemptRecordSchema,
+  regenerateRequestSchema,
   writeAnswerSchema,
   type AttemptRecord,
   type CurrentStep,
@@ -73,7 +74,9 @@ export const writeTask: TaskHandler = async (context) => {
   const keys = ingestionKeys(row.id);
 
   const attempt = stepRow.attempts + 1;
-  if (attempt > deps.settings.writeAttempts) {
+  // Attempts count per round; a maintainer's regeneration starts a new round.
+  const round = attempt - stepRow.attemptBase;
+  if (round > deps.settings.writeAttempts) {
     return async (tx) => {
       await tx
         .update(schema.ingestionSteps)
@@ -97,8 +100,17 @@ export const writeTask: TaskHandler = async (context) => {
       ),
     );
 
+  const regeneration = await readJson(
+    deps.storage,
+    keys.regenerate(stepId),
+    regenerateRequestSchema,
+  );
+  const note =
+    regeneration && regeneration.attemptBase === stepRow.attemptBase
+      ? regeneration
+      : null;
   const previous =
-    attempt > 1
+    round > 1
       ? await readJson(
           deps.storage,
           keys.attempt(stepId, attempt - 1),
@@ -114,6 +126,14 @@ export const writeTask: TaskHandler = async (context) => {
     hiddenTests: String(MIN_HIDDEN_TESTS),
     entryPoint: step.entryPoint,
   });
+  if (note && round === 1) {
+    prompt += `\n\n${render(PROMPTS.regenerate, {
+      note: note.note,
+      files: JSON.stringify(note.files, null, 2),
+    })}`;
+  } else if (note) {
+    prompt += `\n\nThe maintainer's note for this step, which still applies: ${JSON.stringify(note.note)}`;
+  }
   if (previous) {
     prompt += `\n\n${render(PROMPTS.repair, {
       files: JSON.stringify(previous.files, null, 2),
@@ -141,7 +161,11 @@ export const writeTask: TaskHandler = async (context) => {
     stepId,
     attempt,
     writtenAt,
-    instructions: previous ? "repair after failed verification" : null,
+    instructions: previous
+      ? "repair after failed verification"
+      : note
+        ? `regenerated: ${note.note}`
+        : null,
     notes: answer.notes,
     files,
     verification: null,

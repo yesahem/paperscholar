@@ -1,6 +1,22 @@
-import { desc, eq, schema, sql } from "@repo/db";
+import { desc, schema, sql } from "@repo/db";
 import {
+  addStep,
+  cancelIngestion,
   createIngestion,
+  discardIngestion,
+  getStepFiles,
+  publishIngestion,
+  publishReadiness,
+  regenerateStep,
+  removeStep,
+  retryIngestion,
+  reverifyStep,
+  savePlan,
+  saveStepFiles,
+  updateDraft,
+  waiveCheck,
+  type Plan,
+  type StepFiles,
   fetchArxivPdf,
   findArxivIngestion,
   getIngestionState,
@@ -26,6 +42,10 @@ import {
   type IngestionCreated,
   type IngestionDetail,
   type IngestionStep,
+  type IngestionStepFiles,
+  type PublishedPaper,
+  type ReverifyResponse,
+  type UpdateDraft,
   type IngestionSummary,
   type UploadUrlRequest,
   type UploadUrlResponse,
@@ -272,8 +292,17 @@ export function createIngestions({
         readJson(storage, keys.plan, planSchema),
         readJson(storage, keys.report, reportSchema),
       ]);
+      const reviewable = ["ready_for_review", "published"].includes(
+        state.ingestion.status,
+      );
       return {
         ...summary(state.ingestion, state.steps),
+        publishProblems: reviewable
+          ? await publishReadiness(deps, id).catch(() => null)
+          : null,
+        busy: state.tasks.some(
+          (task) => task.status === "pending" || task.status === "running",
+        ),
         options: ingestionOptionsSchema.parse(state.ingestion.options),
         model: state.ingestion.model,
         promptVersion: state.ingestion.promptVersion,
@@ -284,15 +313,95 @@ export function createIngestions({
       };
     },
 
-    /** Whether `id` names an ingestion; for routes that act on one. */
-    async exists(id: string): Promise<boolean> {
-      const [row] = await db
-        .select({ id: schema.ingestions.id })
-        .from(schema.ingestions)
-        .where(eq(schema.ingestions.id, id));
-      return row !== undefined;
-    },
+    // ── Review (docs/specs/09-paper-pipeline.md §10–§12) ──────────────────────
+
+    savePlan: (id: string, plan: Plan, origin: string) =>
+      mapped(async () => {
+        await savePlan(deps, id, plan);
+        kick(origin);
+      }),
+
+    updateDraft: (id: string, changes: UpdateDraft) =>
+      mapped(() => updateDraft(deps, id, changes)),
+
+    getStep: (id: string, stepId: string): Promise<IngestionStepFiles> =>
+      mapped(() => getStepFiles(deps, id, stepId)),
+
+    saveStep: (
+      id: string,
+      stepId: string,
+      files: StepFiles,
+    ): Promise<IngestionStepFiles> =>
+      mapped(async () => {
+        await saveStepFiles(deps, id, stepId, files);
+        return getStepFiles(deps, id, stepId);
+      }),
+
+    verifyStep: (
+      id: string,
+      stepId: string,
+      full: boolean,
+      origin: string,
+    ): Promise<ReverifyResponse> =>
+      mapped(async () => {
+        const result = await reverifyStep(deps, id, stepId, { full });
+        if (result.queued) kick(origin);
+        return result;
+      }),
+
+    regenerateStep: (
+      id: string,
+      stepId: string,
+      note: string,
+      by: string,
+      origin: string,
+    ) =>
+      mapped(async () => {
+        await regenerateStep(deps, id, stepId, { note, by });
+        kick(origin);
+      }),
+
+    addStep: (id: string, description: string, by: string, origin: string) =>
+      mapped(async () => {
+        await addStep(deps, id, { description, by });
+        kick(origin);
+      }),
+
+    removeStep: (id: string, stepId: string) =>
+      mapped(() => removeStep(deps, id, stepId)),
+
+    waive: (id: string, stepId: string, check: "V7" | "V8", reason: string, by: string) =>
+      mapped(() => waiveCheck(deps, id, stepId, { check, reason, by })),
+
+    publish: (id: string, by: string): Promise<PublishedPaper> =>
+      mapped(async () => {
+        const entry = await publishIngestion(deps, id, by);
+        return {
+          paperId: entry.id,
+          version: entry.version,
+          publishedAt: entry.publishedAt,
+        };
+      }),
+
+    cancel: (id: string) => mapped(() => cancelIngestion(deps, id)),
+
+    retry: (id: string, origin: string) =>
+      mapped(async () => {
+        await retryIngestion(deps, id);
+        kick(origin);
+      }),
+
+    discard: (id: string) => mapped(() => discardIngestion(deps, id)),
   };
+}
+
+/** Runs a pipeline call, turning its errors into API errors. */
+async function mapped<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (error) {
+    throw toAppError(error);
+  }
 }
 
 export type Ingestions = ReturnType<typeof createIngestions>;

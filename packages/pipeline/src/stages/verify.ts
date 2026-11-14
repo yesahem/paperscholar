@@ -121,6 +121,15 @@ export async function runChecks(
     mutants,
     solve,
     fidelity,
+    tests: report.tests.map((test) => ({
+      name: test.name,
+      group: test.group,
+      status: test.status,
+      durationMs: test.durationMs,
+      message: test.message,
+      traceback: test.traceback,
+      stdout: test.stdout,
+    })),
   };
 }
 
@@ -163,12 +172,15 @@ export const verifyTask: TaskHandler = async (context) => {
   await addIngestionUsage(deps.db, row.id, { sandboxRuns: verification.sandboxRuns });
 
   return async (tx) => {
-    const automatic = row.status === "writing";
+    // A step the writer just produced is in the repair loop; a maintainer's
+    // edit that is re-checked is not.
+    const automatic = stepRow.status === "verifying";
+    const round = stepRow.attempts - stepRow.attemptBase;
     const status = verification.passed
       ? "verified"
       : !automatic
         ? "edited"
-        : stepRow.attempts < deps.settings.writeAttempts
+        : round < deps.settings.writeAttempts
           ? "writing"
           : "needs_attention";
     await tx
@@ -184,8 +196,7 @@ export const verifyTask: TaskHandler = async (context) => {
           eq(schema.ingestionSteps.stepId, stepId),
         ),
       );
-    if (!automatic) return;
     if (status === "writing") await enqueue(tx, row.id, "write", stepId);
-    else await assembleWhenSettled(tx, row.id);
+    else if (row.status === "writing") await assembleWhenSettled(tx, row.id);
   };
 };

@@ -1,5 +1,6 @@
-import type { ContentStore } from "@repo/content";
-import type { Database } from "@repo/db";
+import { CONTENT_INDEX_LOCK, ContentStore } from "@repo/content";
+import { createAdvisoryLock, type Database } from "@repo/db";
+import { createStorage } from "@repo/storage";
 import type { SandboxProvider } from "@repo/runner";
 import { AVATAR_MAX_BYTES } from "@repo/shared";
 import { Hono } from "hono";
@@ -21,6 +22,8 @@ import { requestContext } from "./middleware/request-context";
 import { requestLogger } from "./middleware/request-logger";
 import { session } from "./middleware/session";
 import { adminIngestionRoutes } from "./routes/admin/ingestions";
+import { adminPaperRoutes } from "./routes/admin/papers";
+import { adminUserRoutes } from "./routes/admin/users";
 import { authRoutes } from "./routes/auth";
 import { avatarRoutes } from "./routes/avatars";
 import { configRoutes } from "./routes/config";
@@ -37,6 +40,7 @@ import { usersRoutes } from "./routes/users";
 import { createAccounts } from "./services/accounts";
 import { createAvatars } from "./services/avatars";
 import { runCleanup } from "./services/cleanup";
+import { createAdminPapers } from "./services/admin-papers";
 import { createContentCatalog } from "./services/content-catalog";
 import { createIngestions, PDF_UPLOAD_PATH_PREFIX } from "./services/ingestions";
 import { instanceConfig } from "./services/instance-config";
@@ -130,6 +134,15 @@ export function createApp({
       })
     : null;
 
+  // Status changes write content/index.json under the database's advisory lock.
+  const contentWriter =
+    pipeline?.deps.content ??
+    new ContentStore({
+      storage: createStorage(config.storage),
+      lock: createAdvisoryLock(db, CONTENT_INDEX_LOCK),
+    });
+  const adminPapers = createAdminPapers({ db, content: contentWriter });
+
   const v1 = new Hono<AppEnv>()
     .use(
       originCheck(config.webOrigin),
@@ -139,6 +152,8 @@ export function createApp({
     // Maintainer and admin routes (M6) are invisible to everyone else.
     .use("/admin/*", requireRole("maintainer", accounts.currentRole))
     .route("/admin/ingestions", adminIngestionRoutes(ingestions))
+    .route("/admin/papers", adminPaperRoutes(adminPapers))
+    .route("/admin/users", adminUserRoutes(accounts))
     .route("/papers", papersRoutes(catalog))
     .route("/tracks", tracksRoutes(catalog))
     .route("/config", configRoutes(instanceConfig(config)))

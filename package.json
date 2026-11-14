@@ -23,7 +23,9 @@
     "admin:password": "bun run --cwd apps/backend admin:password",
     "auth:schema": "bun run --filter backend auth:schema",
     "paper:ingest": "bun run --cwd apps/backend paper:ingest --base \"$PWD\"",
-    "paper:status": "bun run --cwd apps/backend paper:status"
+    "paper:status": "bun run --cwd apps/backend paper:status",
+    "paper:publish": "bun run --cwd apps/backend paper:publish",
+    "paper:eval": "bun run --cwd apps/backend paper:eval --base \"$PWD\""
   },
   "devDependencies": {
     "prettier": "3.9.6",

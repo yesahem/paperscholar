@@ -16,6 +16,16 @@ const errorBodySchema: z.ZodMiniType<ErrorBody> = z.object({
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+/**
+ * What validates a response: a zod/mini schema on learner pages, or a full
+ * zod schema from @repo/shared on the maintainer screens, which load it only there.
+ */
+export interface Validator<T> {
+  safeParse(
+    input: unknown,
+  ): { success: true; data: T } | { success: false; error: unknown };
+}
+
 /** What every API helper accepts: cancellation, and a fetch to use in tests. */
 export interface CallOptions {
   signal?: AbortSignal;
@@ -38,7 +48,7 @@ export interface ApiRequestOptions {
  */
 export async function apiRequest<T>(
   path: string,
-  schema: z.ZodMiniType<T>,
+  schema: Validator<T>,
   options?: ApiRequestOptions,
 ): Promise<T>;
 export async function apiRequest(
@@ -48,7 +58,7 @@ export async function apiRequest(
 ): Promise<void>;
 export async function apiRequest<T>(
   path: string,
-  schema: z.ZodMiniType<T> | null,
+  schema: Validator<T> | null,
   { method = "GET", body, signal, fetch: fetchImpl = fetch }: ApiRequestOptions = {},
 ): Promise<T | void> {
   // The browser sets the multipart boundary itself.

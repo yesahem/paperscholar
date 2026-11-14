@@ -12,6 +12,12 @@ export const ingestionKeys = (ingestionId: string) => {
     attempt: (stepId: string, attempt: number) =>
       `${root}steps/${stepId}/attempt-${attempt}.json`,
     current: (stepId: string) => `${root}steps/${stepId}/current.json`,
+    /** A maintainer's request to write the step again, with their note. */
+    regenerate: (stepId: string) => `${root}steps/${stepId}/regenerate.json`,
+    /** Paper metadata as the maintainer edited it; absent: taken from the outline. */
+    paper: `${root}paper.json`,
+    /** A maintainer's request to add a step, by task key. */
+    addStep: (key: string) => `${root}requests/${key}.json`,
     stepPrefix: (stepId: string) => `${root}steps/${stepId}/`,
   };
 };

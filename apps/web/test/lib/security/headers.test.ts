@@ -11,6 +11,17 @@ describe("security headers", () => {
     expect(policy.match(/avatars\.example\.com/g)).toHaveLength(1);
   });
 
+  test("PDF uploads straight to storage are allowed to that origin only, for fetch", () => {
+    const policy = contentSecurityPolicy({
+      development: false,
+      uploadOrigin: "https://account.r2.cloudflarestorage.com",
+    });
+    expect(policy).toContain(
+      "connect-src 'self' https://account.r2.cloudflarestorage.com",
+    );
+    expect(policy.match(/r2\.cloudflarestorage\.com/g)).toHaveLength(1);
+  });
+
   test("the production policy loads only from this origin and reports violations", () => {
     const policy = contentSecurityPolicy({ development: false });
     expect(policy).toContain("default-src 'self'");

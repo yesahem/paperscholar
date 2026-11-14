@@ -37,6 +37,7 @@ export {
 } from "./llm/fake";
 export {
   DEMO_FILES,
+  DEMO_MUTANTS,
   DEMO_OUTLINE,
   DEMO_PLAN,
   demoPaperAnswers,
@@ -74,3 +75,30 @@ export {
   verifyProblem,
   type VerifyOptions,
 } from "./verify/verify-problem";
+export {
+  addStep,
+  cancelIngestion,
+  discardIngestion,
+  getStepFiles,
+  publishIngestion,
+  publishProblems,
+  publishReadiness,
+  regenerateStep,
+  removeStep,
+  retryIngestion,
+  reverifyStep,
+  savePlan,
+  saveStepFiles,
+  updateDraft,
+  waiveCheck,
+  type DraftChanges,
+} from "./review";
+export { buildDraftContents, writeDraft, type DraftContents } from "./stages/assemble";
+export { learnerView } from "./stages/model-checks";
+export {
+  evalSetSchema,
+  measureIngestion,
+  summariseMeasures,
+  type EvalSet,
+  type IngestionMeasures,
+} from "./eval";

@@ -1,0 +1,1 @@
+ALTER TABLE "ingestion_steps" ADD COLUMN "attempt_base" integer DEFAULT 0 NOT NULL;

@@ -1,0 +1,13 @@
+$kind: http-request
+name: Roles as a user
+order: 7200
+method: GET
+url: "{{baseUrl}}/api/v1/admin/users?q=a"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('are not discoverable by an ordinary user', () => {
+        pm.response.to.have.status(404);
+        pm.expect(pm.response.json().error.code).to.eql('not_found');
+      });

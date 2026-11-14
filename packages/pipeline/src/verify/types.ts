@@ -1,3 +1,4 @@
+import type { TestResult } from "@repo/runner";
 import type { RunEnvironment } from "@repo/shared";
 
 /** Every part of a problem, public and private: what verification checks. */
@@ -43,6 +44,8 @@ export interface VerificationReport {
   ref: string;
   passed: boolean;
   checks: CheckResult[];
+  /** The reference solution's first run, test by test. */
+  tests: TestResult[];
   runs: number;
   durationMs: number;
 }

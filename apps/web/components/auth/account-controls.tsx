@@ -9,16 +9,26 @@ import {
 } from "@repo/ui/components/dropdown-menu";
 import { Avatar } from "@repo/ui/components/avatar";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
+import { hasRole } from "@repo/shared/accounts";
+import {
+  ChevronDown,
+  FileUp,
+  Library,
+  LogOut,
+  Settings,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signOut } from "@/lib/auth/auth-api";
-import { useMe, useRefreshMe } from "@/lib/queries";
+import { useInstanceConfig, useMe, useRefreshMe } from "@/lib/queries";
 import { useAuthDialog } from "./auth-dialog";
 
 /** The header's account area: a sign-in button, or the signed-in user's menu. */
 export function AccountControls() {
   const me = useMe();
+  const config = useInstanceConfig();
   const dialog = useAuthDialog();
   const refreshMe = useRefreshMe();
   const router = useRouter();
@@ -34,7 +44,9 @@ export function AccountControls() {
     );
   }
 
-  const { username } = me.data;
+  const { username, role } = me.data;
+  const maintainer = hasRole(role, "maintainer");
+  const pipeline = config.data?.features.pipeline === true;
 
   async function leave() {
     setSignOutFailed(false);
@@ -84,6 +96,27 @@ export function AccountControls() {
           <Settings aria-hidden="true" />
           Settings
         </DropdownMenuItem>
+        {maintainer ? (
+          <>
+            <DropdownMenuSeparator />
+            {pipeline ? (
+              <DropdownMenuItem onSelect={() => router.push("/admin/papers/new")}>
+                <FileUp aria-hidden="true" />
+                Upload paper
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem onSelect={() => router.push("/admin/papers")}>
+              <Library aria-hidden="true" />
+              Manage papers
+            </DropdownMenuItem>
+            {hasRole(role, "admin") ? (
+              <DropdownMenuItem onSelect={() => router.push("/admin/users")}>
+                <ShieldCheck aria-hidden="true" />
+                Roles
+              </DropdownMenuItem>
+            ) : null}
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void leave()}>
           <LogOut aria-hidden="true" />

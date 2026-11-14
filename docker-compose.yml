@@ -80,6 +80,7 @@ services:
       args:
         SITE_URL: ${WEB_ORIGIN:?set WEB_ORIGIN in .env}
         AVATAR_ORIGIN: ${AVATAR_ORIGIN:-}
+        UPLOAD_ORIGIN: ${UPLOAD_ORIGIN:-}
     image: paperscholar-web
     restart: unless-stopped
     networks: [edge, app]

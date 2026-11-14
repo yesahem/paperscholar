@@ -1,12 +1,26 @@
-import { eq, schema } from "@repo/db";
+import { desc, eq, schema } from "@repo/db";
 import { enqueue } from "../engine/queue";
 import type { TaskHandler } from "../engine/tick";
 import { ingestionKeys } from "../keys";
 import { LlmError } from "../llm/types";
-import { writeJson } from "../objects";
+import { requireJson, writeJson } from "../objects";
 import { PROMPTS, render } from "../prompts";
-import { checkPlan, planSchema, type IngestionOptions, type Plan } from "../schemas";
-import { callModel, documentFor, loadIngestion, loadOutline, optionsOf } from "./common";
+import {
+  addStepRequestSchema,
+  checkPlan,
+  planSchema,
+  planStepSchema,
+  type IngestionOptions,
+  type Plan,
+} from "../schemas";
+import {
+  callModel,
+  documentFor,
+  loadIngestion,
+  loadOutline,
+  loadPlan,
+  optionsOf,
+} from "./common";
 
 /** One retry inside the task when the plan breaks a rule the schema cannot express. */
 const PLAN_CALLS = 2;
@@ -37,8 +51,68 @@ function optionProblems(plan: Plan, options: IngestionOptions): string[] {
     );
 }
 
-/** Stage 2 (§6): the ordered learning path. */
+/**
+ * A step a maintainer asked for in a sentence (§10): the planner designs it
+ * against the existing plan, then stages 3–4 run for it.
+ */
+const addStepTask: TaskHandler = async (context) => {
+  const { deps, task } = context;
+  const row = await loadIngestion(context);
+  const keys = ingestionKeys(row.id);
+  const [outline, plan, request] = await Promise.all([
+    loadOutline(context),
+    loadPlan(context),
+    requireJson(deps.storage, keys.addStep(task.key), addStepRequestSchema),
+  ]);
+  const document = await documentFor(context, row);
+  const step = await callModel(context, {
+    purpose: "plan",
+    subject: null,
+    system: PROMPTS.system,
+    document,
+    context: [JSON.stringify(outline)],
+    prompt: render(PROMPTS.addStep, {
+      description: request.description,
+      plan: JSON.stringify(plan, null, 2),
+    }),
+    schema: planStepSchema,
+    schemaName: "plan_step",
+    effort: "high",
+    maxTokens: 16_000,
+  });
+  const extended: Plan = { ...plan, steps: [...plan.steps, step] };
+  const problems = checkPlan(extended, outline, { min: 1, max: deps.settings.maxSteps });
+  if (problems.length > 0) {
+    throw new LlmError(
+      "invalid_output",
+      `the new step broke the plan's rules: ${problems.join("; ")}`,
+    );
+  }
+  await writeJson(deps.storage, keys.plan, extended);
+
+  return async (tx) => {
+    const [last] = await tx
+      .select({ position: schema.ingestionSteps.position })
+      .from(schema.ingestionSteps)
+      .where(eq(schema.ingestionSteps.ingestionId, row.id))
+      .orderBy(desc(schema.ingestionSteps.position))
+      .limit(1);
+    await tx
+      .insert(schema.ingestionSteps)
+      .values({
+        ingestionId: row.id,
+        stepId: step.id,
+        position: (last?.position ?? -1) + 1,
+        title: step.title,
+      })
+      .onConflictDoNothing();
+    await enqueue(tx, row.id, "write", step.id);
+  };
+};
+
+/** Stage 2 (§6): the ordered learning path; with a key, one added step. */
 export const planTask: TaskHandler = async (context) => {
+  if (context.task.key !== "") return addStepTask(context);
   const { deps } = context;
   const row = await loadIngestion(context);
   const options = optionsOf(row);

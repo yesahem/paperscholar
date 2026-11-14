@@ -1,6 +1,7 @@
 import {
   extractPythonInterface,
   hashFiles,
+  paperMetadataSchema,
   type PaperMetadata,
   type StoredProblemPrivate,
   type StoredProblemPublic,
@@ -9,23 +10,19 @@ import { asc, eq, schema, sql } from "@repo/db";
 import type { PipelineDeps } from "../deps";
 import type { TaskHandler } from "../engine/tick";
 import { ingestionKeys } from "../keys";
-import { requireJson, writeJson } from "../objects";
+import { readJson, requireJson, writeJson } from "../objects";
 import {
   currentStepSchema,
   ingestionUsageSchema,
+  outlineSchema,
+  planSchema,
   type CurrentStep,
   type IngestionReport,
   type Outline,
+  type Plan,
   type PlanStep,
 } from "../schemas";
-import {
-  findStep,
-  loadIngestion,
-  loadOutline,
-  loadPlan,
-  STEP_LIMITS,
-  type IngestionRow,
-} from "./common";
+import { findStep, loadIngestion, STEP_LIMITS, type IngestionRow } from "./common";
 import { stepFileList } from "./files";
 
 const MAX_SLUG_LENGTH = 48;
@@ -147,34 +144,78 @@ export function storedProblem(
 }
 
 /** Stage 5 (§9): the draft paper and the ingestion report. */
-export const assembleTask: TaskHandler = async (context) => {
-  const { deps } = context;
-  const row = await loadIngestion(context);
-  const [outline, plan] = await Promise.all([loadOutline(context), loadPlan(context)]);
+/** Everything a draft or a published version is made of, as the steps stand now. */
+export interface DraftContents {
+  paper: PaperMetadata;
+  steps: (typeof schema.ingestionSteps.$inferSelect)[];
+  currents: CurrentStep[];
+  plan: Plan;
+  problems: { public: StoredProblemPublic; private: StoredProblemPrivate }[];
+}
+
+/**
+ * Builds the paper from the steps' current files, in the maintainer's order
+ * and with their titles and paper metadata where they edited them.
+ */
+export async function buildDraftContents(
+  deps: PipelineDeps,
+  row: IngestionRow,
+): Promise<DraftContents> {
   const keys = ingestionKeys(row.id);
+  const [outline, plan, paperEdit] = await Promise.all([
+    requireJson(deps.storage, keys.outline, outlineSchema),
+    requireJson(deps.storage, keys.plan, planSchema),
+    readJson(deps.storage, keys.paper, paperMetadataSchema),
+  ]);
   const steps = await deps.db
     .select()
     .from(schema.ingestionSteps)
     .where(eq(schema.ingestionSteps.ingestionId, row.id))
     .orderBy(asc(schema.ingestionSteps.position));
-
   const currents = await Promise.all(
     steps.map((step) =>
       requireJson(deps.storage, keys.current(step.stepId), currentStepSchema),
     ),
   );
   const problems = steps.map((stepRow, order) =>
-    storedProblem(findStep(plan, stepRow.stepId), currents[order] as CurrentStep, order),
+    storedProblem(
+      { ...findStep(plan, stepRow.stepId), title: stepRow.title },
+      currents[order] as CurrentStep,
+      order,
+    ),
   );
+  return {
+    paper: paperEdit ?? paperMetadata(outline, row),
+    steps,
+    currents,
+    plan,
+    problems,
+  };
+}
 
-  const paperId = await allocatePaperId(deps, row, outline.title);
+/** Writes the ingestion's draft paper, allocating its id the first time. */
+export async function writeDraft(
+  deps: PipelineDeps,
+  row: IngestionRow,
+): Promise<{ paperId: string; contents: DraftContents }> {
+  const contents = await buildDraftContents(deps, row);
+  const paperId = await allocatePaperId(deps, row, contents.paper.title);
   await deps.content.putDraft({
     paperId,
     ingestionId: row.id,
-    paper: paperMetadata(outline, row),
-    problems: problems.map((problem) => problem.public),
-    privateProblems: problems.map((problem) => problem.private),
+    paper: contents.paper,
+    problems: contents.problems.map((problem) => problem.public),
+    privateProblems: contents.problems.map((problem) => problem.private),
   });
+  return { paperId, contents };
+}
+
+export const assembleTask: TaskHandler = async (context) => {
+  const { deps } = context;
+  const row = await loadIngestion(context);
+  const keys = ingestionKeys(row.id);
+  const { paperId, contents } = await writeDraft(deps, row);
+  const { steps, currents, plan } = contents;
 
   const assembledAt = context.now();
   const report: IngestionReport = {

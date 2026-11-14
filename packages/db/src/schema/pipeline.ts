@@ -88,8 +88,13 @@ export const ingestionSteps = pgTable(
     position: integer("position").notNull(),
     title: text("title").notNull(),
     status: text("status", { enum: STEP_STATUSES }).notNull().default("pending"),
-    /** Write attempts used so far (at most 3 before `needs_attention`). */
+    /** Write attempts used so far, over the step's whole life. */
     attempts: integer("attempts").notNull().default(0),
+    /**
+     * Attempts used before the current round. A maintainer's regeneration
+     * starts a new round of three without overwriting earlier attempts.
+     */
+    attemptBase: integer("attempt_base").notNull().default(0),
     /** Pass or fail and a one-line reason per check, for the latest content. */
     verification: jsonb("verification"),
     /** `{ check, reason, by, at }` for each waived check. */

@@ -29,6 +29,8 @@ import { Input } from "@repo/ui/components/input";
 | `components/field`            | Label, help text and error around one control. Wires `id`, `aria-describedby`, `aria-invalid`, `required`.     |
 | `components/input`            | Single-line text.                                                                                              |
 | `components/textarea`         | Multi-line text.                                                                                               |
+| `components/select`           | A native select styled like Input; pass `<option>` children.                                                   |
+| `components/checkbox`         | A native checkbox with its label and optional description beside it.                                           |
 | `components/file-upload`      | Choosing files by drag-and-drop or browsing, with type, size and count checks.                                 |
 | `components/label`            | A standalone label. Inside a `Field`, use the Field's `label` instead.                                         |
 | `components/card`             | Grouped content: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`.            |

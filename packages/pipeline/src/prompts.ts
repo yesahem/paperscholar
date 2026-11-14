@@ -1,9 +1,11 @@
 /// <reference path="./text-modules.d.ts" />
+import addStepTemplate from "../prompts/add-step.md" with { type: "text" };
 import equivalenceTemplate from "../prompts/equivalence.md" with { type: "text" };
 import fidelityTemplate from "../prompts/fidelity.md" with { type: "text" };
 import mutantsTemplate from "../prompts/mutants.md" with { type: "text" };
 import planTemplate from "../prompts/plan.md" with { type: "text" };
 import readTemplate from "../prompts/read.md" with { type: "text" };
+import regenerateTemplate from "../prompts/regenerate.md" with { type: "text" };
 import repairTemplate from "../prompts/repair.md" with { type: "text" };
 import solveRetryTemplate from "../prompts/solve-retry.md" with { type: "text" };
 import solveSystemPrompt from "../prompts/solve-system.md" with { type: "text" };
@@ -16,7 +18,7 @@ import writeTemplate from "../prompts/write.md" with { type: "text" };
  * ingestion. Change it with any prompt change, and run the eval
  * (docs/specs/09-paper-pipeline.md §14, §18).
  */
-export const PROMPT_VERSION = "2026-11-14.2";
+export const PROMPT_VERSION = "2026-11-14.3";
 
 export const PROMPTS = {
   system: systemPrompt,
@@ -24,6 +26,8 @@ export const PROMPTS = {
   plan: planTemplate,
   write: writeTemplate,
   repair: repairTemplate,
+  regenerate: regenerateTemplate,
+  addStep: addStepTemplate,
   mutants: mutantsTemplate,
   equivalence: equivalenceTemplate,
   /** The V8 solver's own system prompt: it shares nothing with the writer. */

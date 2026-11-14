@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ENVIRONMENT_PACKAGES, slugSchema } from "./content";
+import { submissionTestSchema } from "./http/submissions";
 import { PIPELINE_DEFAULTS } from "./pipeline";
 import {
   CONTENT_TAGS,
@@ -245,6 +246,8 @@ export const verificationSchema = z.object({
   solve: solveResultSchema.nullable().default(null),
   /** V9's issues, when it ran; notes are shown to the reviewer. */
   fidelity: z.array(fidelityIssueSchema).nullable().default(null),
+  /** The reference solution's run, test by test: the view a learner gets of their own. */
+  tests: z.array(submissionTestSchema).nullable().default(null),
 });
 export type Verification = z.infer<typeof verificationSchema>;
 
@@ -271,6 +274,26 @@ export const currentStepSchema = z.object({
   verification: verificationSchema.nullable(),
 });
 export type CurrentStep = z.infer<typeof currentStepSchema>;
+
+/** `steps/<stepId>/regenerate.json`: a maintainer asked for the step to be written again. */
+export const regenerateRequestSchema = z.object({
+  note: z.string(),
+  /** The round this request starts: the step's attempts when it was made. */
+  attemptBase: z.number().int().min(0),
+  /** The files as they stood, for the writer's reference. */
+  files: stepFilesSchema,
+  requestedBy: z.string(),
+  requestedAt: z.iso.datetime({ offset: true }),
+});
+export type RegenerateRequest = z.infer<typeof regenerateRequestSchema>;
+
+/** `requests/<key>.json`: a maintainer asked for a new step. */
+export const addStepRequestSchema = z.object({
+  description: z.string().min(1),
+  requestedBy: z.string(),
+  requestedAt: z.iso.datetime({ offset: true }),
+});
+export type AddStepRequest = z.infer<typeof addStepRequestSchema>;
 
 // ── Stage 5: assemble ───────────────────────────────────────────────────────────
 

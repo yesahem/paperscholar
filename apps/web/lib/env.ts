@@ -12,6 +12,13 @@ const envSchema = z.object({
    * Content-Security-Policy. Unset when avatars come from this site.
    */
   AVATAR_ORIGIN: httpOriginSchema.optional(),
+  /**
+   * Origin maintainers' browsers upload PDFs to when the backend stores files
+   * in R2 (its S3 endpoint, https://<account>.r2.cloudflarestorage.com).
+   * Allowed for fetch by the Content-Security-Policy. Unset with fs storage,
+   * where uploads go through this site.
+   */
+  UPLOAD_ORIGIN: httpOriginSchema.optional(),
 });
 
 export type WebEnv = z.output<typeof envSchema>;
