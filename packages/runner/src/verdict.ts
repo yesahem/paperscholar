@@ -1,15 +1,7 @@
+import type { Verdict } from "@repo/shared";
 import type { RunResult } from "./types";
 
-export const VERDICTS = [
-  "passed",
-  "failed",
-  "time_limit_exceeded",
-  "memory_limit_exceeded",
-  "import_violation",
-  "runtime_error",
-  "internal_error",
-] as const;
-export type Verdict = (typeof VERDICTS)[number];
+export { VERDICTS, type Verdict } from "@repo/shared";
 
 export interface VerdictResult {
   /** `error` means the run failed for reasons that are ours, not the learner's. */

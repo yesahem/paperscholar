@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
-import { silentLogger } from "../../src/lib/logger";
+import { silentLogger } from "@repo/shared/logger";
 import { createErrorHandler } from "../../src/middleware/error-handler";
 import { originCheck } from "../../src/middleware/origin-check";
 import type { AppEnv } from "../../src/types";

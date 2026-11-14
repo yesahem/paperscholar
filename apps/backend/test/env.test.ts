@@ -38,7 +38,15 @@ describe("loadConfig", () => {
       version: "dev",
       databaseUrl: DATABASE_URL,
       storage: { driver: "fs", root: resolve(".storage") },
-      limits: { runsPerDay: DEFAULT_RUNS_PER_DAY },
+      avatars: { driver: "fs" },
+      limits: {
+        runsPerDay: DEFAULT_RUNS_PER_DAY,
+        runsPerMinute: 10,
+        globalRunsPerDay: 20_000,
+        mutationsPerMinute: 60,
+      },
+      runner: { provider: "local", pythonPath: null },
+      internalSecret: null,
       auth: {
         secret: SECRET,
         adminEmails: [],
@@ -117,6 +125,8 @@ describe("loadConfig", () => {
       "R2_ACCESS_KEY_ID is required when STORAGE_DRIVER is r2",
       "R2_ACCOUNT_ID or R2_ENDPOINT is required when STORAGE_DRIVER is r2",
       "R2_BUCKET is required when STORAGE_DRIVER is r2",
+      "R2_PUBLIC_BUCKET is required when STORAGE_DRIVER is r2 (avatars)",
+      "R2_PUBLIC_URL is required when STORAGE_DRIVER is r2 (avatars)",
       "R2_SECRET_ACCESS_KEY is required when STORAGE_DRIVER is r2",
     ]);
     const config = loadConfig({
@@ -126,6 +136,13 @@ describe("loadConfig", () => {
       R2_ACCESS_KEY_ID: "key",
       R2_SECRET_ACCESS_KEY: "secret",
       R2_BUCKET: "paperscholar-content",
+      R2_PUBLIC_BUCKET: "paperscholar-public",
+      R2_PUBLIC_URL: "https://avatars.example.com/",
+    });
+    expect(config.avatars).toEqual({
+      driver: "r2",
+      bucket: "paperscholar-public",
+      publicUrl: "https://avatars.example.com",
     });
     expect(config.storage).toEqual({
       driver: "r2",
@@ -136,6 +153,10 @@ describe("loadConfig", () => {
       accessKeyId: "key",
       secretAccessKey: "secret",
     });
+  });
+
+  test("avatars are served by the API with the fs driver", () => {
+    expect(loadConfig(valid).avatars).toEqual({ driver: "fs" });
   });
 
   test("serverless hosting refuses the local-disk driver", () => {
@@ -191,7 +212,14 @@ describe("loadConfig", () => {
   test("email: log in development, none elsewhere, never log in production", () => {
     expect(loadConfig({ ...valid, NODE_ENV: "test" }).email).toEqual({ driver: "none" });
     expect(
-      problemsFor({ ...valid, NODE_ENV: "production", EMAIL_DRIVER: "log" }),
+      problemsFor({
+        ...valid,
+        NODE_ENV: "production",
+        EMAIL_DRIVER: "log",
+        RUNNER_PROVIDER: "vercel",
+        RUNNER_IMAGE_NUMPY: "n",
+        RUNNER_IMAGE_TORCH: "t",
+      }),
     ).toEqual([
       "EMAIL_DRIVER cannot be log in production: it prints sign-in links to the console",
     ]);
@@ -231,5 +259,90 @@ describe("loadConfig", () => {
     expect(
       verifiesEmail(loadConfig({ ...valid, REQUIRE_EMAIL_VERIFICATION: "false" })),
     ).toBe(false);
+  });
+});
+
+describe("runner configuration", () => {
+  const token = "r".repeat(32);
+
+  test("development runs code locally by default", () => {
+    expect(loadConfig(valid).runner).toEqual({ provider: "local", pythonPath: null });
+    expect(loadConfig({ ...valid, RUNNER_PYTHON: "/opt/py/bin/python" }).runner).toEqual({
+      provider: "local",
+      pythonPath: "/opt/py/bin/python",
+    });
+  });
+
+  test("production must choose an isolating provider", () => {
+    const production = { ...valid, NODE_ENV: "production" };
+    expect(problemsFor(production)).toContain(
+      "RUNNER_PROVIDER is required in production: http for the bundled runner, vercel for Vercel Sandbox",
+    );
+    expect(problemsFor({ ...production, RUNNER_PROVIDER: "local" })).toContain(
+      "RUNNER_PROVIDER cannot be local in production: the local runner isolates nothing",
+    );
+  });
+
+  test("http needs the runner's URL and a long token", () => {
+    expect(problemsFor({ ...valid, RUNNER_PROVIDER: "http" })).toEqual([
+      "RUNNER_URL is required when RUNNER_PROVIDER is http",
+      "RUNNER_TOKEN is required when RUNNER_PROVIDER is http",
+    ]);
+    expect(
+      problemsFor({
+        ...valid,
+        RUNNER_PROVIDER: "http",
+        RUNNER_URL: "http://runner:8798",
+        RUNNER_TOKEN: "short",
+      })[0],
+    ).toStartWith("RUNNER_TOKEN must be at least 32 characters");
+    expect(
+      loadConfig({
+        ...valid,
+        RUNNER_PROVIDER: "http",
+        RUNNER_URL: "http://runner:8798",
+        RUNNER_TOKEN: token,
+      }).runner,
+    ).toEqual({ provider: "http", url: "http://runner:8798", token });
+  });
+
+  test("vercel needs both images; access-token credentials come as a set", () => {
+    expect(problemsFor({ ...valid, RUNNER_PROVIDER: "vercel" })).toEqual([
+      "RUNNER_IMAGE_NUMPY is required when RUNNER_PROVIDER is vercel",
+      "RUNNER_IMAGE_TORCH is required when RUNNER_PROVIDER is vercel",
+    ]);
+    const images = {
+      RUNNER_PROVIDER: "vercel",
+      RUNNER_IMAGE_NUMPY: "n:1",
+      RUNNER_IMAGE_TORCH: "t:1",
+    };
+    expect(loadConfig({ ...valid, ...images }).runner).toEqual({
+      provider: "vercel",
+      images: { numpy: "n:1", torch: "t:1" },
+      credentials: null,
+    });
+    expect(problemsFor({ ...valid, ...images, VERCEL_TOKEN: "tok" })).toEqual([
+      "VERCEL_TEAM_ID VERCEL_PROJECT_ID and VERCEL_TOKEN must be set together",
+    ]);
+  });
+
+  test("limits and the internal secret", () => {
+    const config = loadConfig({
+      ...valid,
+      RUNS_PER_MINUTE: "5",
+      GLOBAL_RUNS_PER_DAY: "1000",
+      MUTATIONS_PER_MINUTE: "30",
+      INTERNAL_SECRET: "i".repeat(32),
+    });
+    expect(config.limits).toEqual({
+      runsPerDay: 100,
+      runsPerMinute: 5,
+      globalRunsPerDay: 1000,
+      mutationsPerMinute: 30,
+    });
+    expect(config.internalSecret).toBe("i".repeat(32));
+    expect(problemsFor({ ...valid, INTERNAL_SECRET: "short" })[0]).toStartWith(
+      "INTERNAL_SECRET must be at least 32",
+    );
   });
 });

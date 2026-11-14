@@ -101,6 +101,19 @@ deployment that it survives the proxy hop. Never trust a client-supplied forward
 > Without any trusted header, a production API counts every visitor in one shared bucket
 > per auth route. On the hosted deployment, Vercel's edge sets `x-forwarded-for`; that it
 > reaches the API across the rewrite is still to be checked on a preview.
+>
+> **M4.** `docker-compose.yml` puts Caddy in front of `web` (`deploy/Caddyfile`). Caddy
+> replaces a client's `X-Forwarded-For` with the address it sees. Measured on the
+> composed stack: twelve failed sign-ins, each with a different forged header, were
+> refused from the eleventh. The per-user submission limits and the 60-writes-per-minute
+> limit on `/v1` (`MUTATIONS_PER_MINUTE`) are built. The 300-per-minute limit on public
+> reads is not: it would add a database write to every content request, which spec 05
+> §5 keeps free of the database. Deciding between the two is open.
+
+> **M5.** User search (30 per minute per address) and avatar uploads (10 per hour per
+> user) are built. `/api/auth/change-password` is under the sign-in limit (10 per 10
+> minutes per address), since a signed-in session could otherwise guess the current
+> password at Better Auth's default 100 per minute. `img-src` adds `AVATAR_ORIGIN` when set.
 
 ## 4. Input handling
 

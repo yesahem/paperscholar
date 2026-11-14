@@ -1,0 +1,15 @@
+$kind: http-request
+name: Remove the avatar
+order: 5300
+method: DELETE
+url: "{{baseUrl}}/api/v1/me/avatar"
+headers:
+  - key: Origin
+    value: "{{webOrigin}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('answers 204', () => {
+        pm.response.to.have.status(204);
+      });

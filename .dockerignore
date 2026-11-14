@@ -1,0 +1,15 @@
+# Build context for apps/*/Dockerfile: the repository, minus what is local or generated.
+**/node_modules
+**/.next
+**/.turbo
+**/.storage
+**/.venv
+**/.env
+**/.env.*
+!**/.env.example
+**/coverage
+.git
+.github
+docs
+postman
+*.log

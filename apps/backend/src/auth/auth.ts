@@ -5,7 +5,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import type { EmailSender } from "../adapters/email/types";
 import { verifiesEmail, type AppConfig } from "../env";
-import type { Logger } from "../lib/logger";
+import type { Logger } from "@repo/shared/logger";
 import { passwordResetEmail, verificationEmail } from "../services/email-templates";
 import type { RateLimiter } from "../services/rate-limiter";
 import { generateUsername } from "../services/usernames";
@@ -45,6 +45,8 @@ export const RATE_LIMITED_AUTH_PATHS = [
   "/request-password-reset",
   "/reset-password",
   "/send-verification-email",
+  // A signed-in session must not be able to guess the current password quickly.
+  "/change-password",
 ];
 
 export interface AuthDependencies {
@@ -194,8 +196,13 @@ export function createAuth({
             return { data: { ...user, username, role: admin ? "admin" : "user" } };
           },
           after: async (user) => {
+            // Upserts elsewhere cover a hook that fails: readers treat missing rows as empty.
             await db
               .insert(schema.profiles)
+              .values({ userId: user.id })
+              .onConflictDoNothing();
+            await db
+              .insert(schema.userStats)
               .values({ userId: user.id })
               .onConflictDoNothing();
             if (user.role === "admin") {

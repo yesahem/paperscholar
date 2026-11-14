@@ -19,12 +19,19 @@ Accounts (docs/specs/06-auth.md) are Better Auth, mounted at `/api/auth/*`. In d
 emails are printed to this process's output (`EMAIL_DRIVER=log`), so verification and
 reset links can be followed from the terminal.
 
+Submissions (docs/specs/07-runner.md) run where `RUNNER_PROVIDER` says: `local` (the
+default in development, through Python from `bun run runner:setup`; isolates nothing),
+`http` (the bundled Docker runner, `apps/runner`) or `vercel` (Vercel Sandbox). The run
+continues after the `202`; the browser polls `GET /v1/submissions/:id`.
+
 ## Entry points
 
-| File           | Used by                                                                                   |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| `src/main.ts`  | Local development and self-hosting: starts `Bun.serve`, shuts down gracefully on SIGTERM. |
-| `src/index.ts` | Serverless hosts: default-exports the app. `vercel.json` selects the Bun runtime.         |
+| File            | Used by                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`   | Local development and self-hosting: starts `Bun.serve`, shuts down gracefully on SIGTERM.                           |
+| `src/index.ts`  | Serverless hosts: default-exports the app. `vercel.json` selects the Bun runtime, `maxDuration` and the daily cron. |
+| `src/worker.ts` | Self-hosting (`bun run worker`): the daily cleanup. Serverless uses `/api/internal/cron/cleanup` instead.           |
+| `Dockerfile`    | The image for `backend` and `worker` in `docker-compose.yml`.                                                       |
 
 Both build the same app with `createApp()` in `src/create-app.ts`.
 
@@ -36,12 +43,12 @@ Both build the same app with `createApp()` in `src/create-app.ts`.
 | `src/create-app.ts` | Middleware, error handling, route mounting.                                                                                      |
 | `src/routes/`       | One router per resource. Validate input, call a service, shape the response.                                                     |
 | `src/auth/`         | Better Auth's configuration, and the options that shape its tables.                                                              |
-| `src/services/`     | Business logic: content catalogue, accounts and roles, rate limiter, email templates.                                            |
-| `src/adapters/`     | Wiring to storage and email: the read-only content store, the email drivers.                                                     |
+| `src/services/`     | Business logic: content catalogue, accounts and roles, submissions, cleanup, rate limiter, email templates.                      |
+| `src/adapters/`     | Wiring to storage, email and the sandbox: the read-only content store, the email drivers, `createSandboxProvider`.               |
 | `src/cli/`          | `content:sync`, `content:export`, `content:status`, `admin:grant`, `admin:password`.                                             |
 | `src/middleware/`   | Request context, logging, cache policy, body limit, error envelope, session, guards.                                             |
 | `scripts/`          | `auth:schema`: regenerates `packages/db/src/schema/auth.ts` from Better Auth.                                                    |
-| `src/lib/`          | `AppError`, the JSON logger, `validate()` for request input.                                                                     |
+| `src/lib/`          | `AppError` and `validate()` for request input. The JSON logger is `@repo/shared/logger`.                                         |
 | `test/`             | `bun test` suites using `app.request()`; no network. Database suites need `DATABASE_URL` and create their own database per file. |
 
 ## Conventions

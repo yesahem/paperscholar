@@ -1,0 +1,24 @@
+$kind: http-request
+name: Upload an avatar
+order: 5000
+method: POST
+url: "{{baseUrl}}/api/v1/me/avatar"
+headers:
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: formdata
+  content:
+    - key: avatar
+      type: file
+      src: postman/fixtures/avatar.png
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('stores it and answers its URL', () => {
+        pm.response.to.have.status(200);
+        const { avatarUrl } = pm.response.json();
+        pm.expect(avatarUrl).to.match(/\.webp$/);
+        pm.collectionVariables.set('avatarUrl', avatarUrl);
+      });

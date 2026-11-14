@@ -11,13 +11,3 @@ export const HARNESS_FILES: readonly RunFile[] = [
   { path: "harness.py", content: harnessSource },
   { path: "conftest.py", content: conftestSource },
 ];
-
-/** Paths a request may not overwrite. */
-export const RESERVED_PATHS = new Set([
-  "harness.py",
-  "conftest.py",
-  "spec.json",
-  "result.json",
-  "events.jsonl",
-  "pytest.log",
-]);

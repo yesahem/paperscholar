@@ -16,8 +16,15 @@ const errorBodySchema: z.ZodMiniType<ErrorBody> = z.object({
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+/** What every API helper accepts: cancellation, and a fetch to use in tests. */
+export interface CallOptions {
+  signal?: AbortSignal;
+  fetch?: FetchLike;
+}
+
 export interface ApiRequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+  /** Sent as JSON, or as multipart/form-data when it is a FormData. */
   body?: unknown;
   signal?: AbortSignal;
   fetch?: FetchLike;
@@ -44,6 +51,8 @@ export async function apiRequest<T>(
   schema: z.ZodMiniType<T> | null,
   { method = "GET", body, signal, fetch: fetchImpl = fetch }: ApiRequestOptions = {},
 ): Promise<T | void> {
+  // The browser sets the multipart boundary itself.
+  const multipart = body instanceof FormData;
   let response: Response;
   try {
     response = await fetchImpl(`/api${path}`, {
@@ -51,8 +60,11 @@ export async function apiRequest<T>(
       signal,
       credentials: "same-origin",
       cache: "no-store",
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers:
+        body === undefined || multipart
+          ? undefined
+          : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
     });
   } catch (error) {
     throw new ApiError("Could not reach the server. Check your connection.", null, null, {

@@ -25,8 +25,8 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Code drafts.</strong> What you type in the editor is saved in your
-          browser&apos;s local storage so it is there when you come back. It is never sent
-          to the server. Clear your site data to remove it.
+          browser&apos;s local storage so it is there when you come back. It is sent to
+          the server only when you press Run or Submit. Clear your site data to remove it.
         </li>
         <li>
           <strong>Theme.</strong> Your light or dark choice, if you made one.
@@ -56,6 +56,12 @@ export default function PrivacyPage() {
           and browser name, so a session can be recognised and ended.
         </li>
         <li>
+          <strong>Code you run or submit</strong>, with its test results, so you can see
+          your history and restore earlier code. Runs are deleted after 30 days; submits
+          are kept with your account. Your code is run in an isolated sandbox with no
+          network and is never shown to other people.
+        </li>
+        <li>
           <strong>Google sign-in</strong>, if you use it and this instance offers it:
           Google tells this site your email address and name. The sign-in tokens Google
           issues are kept with your account, encrypted.
@@ -72,7 +78,8 @@ export default function PrivacyPage() {
         page or API route, the status, how long it took and a random request id. They do
         not include your IP address, cookies, email address or what you typed. To slow
         down password guessing it counts sign-in, sign-up and reset attempts per network
-        address. If your browser reports a blocked script under the site&apos;s security
+        address, and it counts runs per account to keep each person within the daily
+        limit. If your browser reports a blocked script under the site&apos;s security
         policy, the server logs which rule was involved and the page path, without query
         strings. The company hosting this instance may keep its own access logs.
       </p>

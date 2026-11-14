@@ -1,0 +1,195 @@
+# Self-hosting stack (docs/specs/13-self-hosting.md). Quick start:
+#   cp .env.example .env      # set WEB_ORIGIN and the three secrets
+#   docker compose up -d      # then open WEB_ORIGIN
+#
+# ISOLATION: by default, learners' code runs in plain Docker containers, which
+# share this machine's kernel. That suits you, a team or a class: people you
+# trust not to attack the host. For an instance open to the public, install
+# gVisor and set RUNNER_DOCKER_RUNTIME=runsc in .env (docs/specs/13-self-hosting.md §5).
+name: paperscholar
+
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN in .env}
+  DATABASE_URL: postgres://paperscholar:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/paperscholar
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-fs}
+  STORAGE_FS_PATH: /data/storage
+  RUNNER_PROVIDER: http
+  RUNNER_URL: http://runner:8798
+  RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN in .env}
+  # Set by the proxy in front of web (deploy/Caddyfile).
+  CLIENT_IP_HEADER: x-forwarded-for
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+  ALLOW_SIGNUPS: ${ALLOW_SIGNUPS:-}
+  REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-}
+  RUNS_PER_DAY: ${RUNS_PER_DAY:-}
+  RUNS_PER_MINUTE: ${RUNS_PER_MINUTE:-}
+  GLOBAL_RUNS_PER_DAY: ${GLOBAL_RUNS_PER_DAY:-}
+  MUTATIONS_PER_MINUTE: ${MUTATIONS_PER_MINUTE:-}
+  EMAIL_DRIVER: ${EMAIL_DRIVER:-none}
+  EMAIL_FROM: ${EMAIL_FROM:-}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-}
+  SMTP_SECURE: ${SMTP_SECURE:-}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+  R2_ENDPOINT: ${R2_ENDPOINT:-}
+  R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+  R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+  R2_BUCKET: ${R2_BUCKET:-}
+  R2_PUBLIC_BUCKET: ${R2_PUBLIC_BUCKET:-}
+  R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
+
+services:
+  # The only service published to the outside.
+  proxy:
+    image: caddy:2.11.9-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    networks: [edge]
+    depends_on: [web]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        SITE_URL: ${WEB_ORIGIN:?set WEB_ORIGIN in .env}
+        AVATAR_ORIGIN: ${AVATAR_ORIGIN:-}
+    image: paperscholar-web
+    restart: unless-stopped
+    networks: [edge, app]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Applies migrations and loads the bundled papers on start.
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    image: paperscholar-backend
+    restart: unless-stopped
+    environment: *backend-environment
+    volumes:
+      - storage:/data/storage
+    networks: [app, data, sandbox]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const r = await fetch('http://localhost:8797/api/health'); process.exit(r.ok ? 0 : 1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      runner:
+        condition: service_started
+
+  # Scheduled work: the daily cleanup (and, from M6, the paper pipeline).
+  worker:
+    image: paperscholar-backend
+    restart: unless-stopped
+    command: ["bun", "apps/backend/src/worker.ts"]
+    environment: *backend-environment
+    volumes:
+      - storage:/data/storage
+    networks: [data, sandbox]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Starts one locked-down container per run. Holds the Docker socket, which
+  # is root on this machine, so it has no port and only backend and worker
+  # can reach it.
+  runner:
+    build:
+      context: .
+      dockerfile: apps/runner/Dockerfile
+    image: paperscholar-runner
+    restart: unless-stopped
+    environment:
+      RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN in .env}
+      RUNNER_DOCKER_RUNTIME: ${RUNNER_DOCKER_RUNTIME:-}
+      RUNNER_MAX_CONCURRENT: ${RUNNER_MAX_CONCURRENT:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [sandbox]
+    depends_on:
+      sandbox-numpy:
+        condition: service_completed_successfully
+      sandbox-torch:
+        condition: service_completed_successfully
+
+  # The two sandbox images. These services only build the images and check
+  # them, then exit; the runner starts containers from them.
+  sandbox-numpy:
+    build:
+      context: packages/runner/environments
+      dockerfile: ../images/Dockerfile
+      args:
+        ENVIRONMENT: numpy
+    image: paperscholar-sandbox-numpy
+    command: ["python", "-c", "import numpy, pytest"]
+    network_mode: none
+    restart: "no"
+
+  sandbox-torch:
+    build:
+      context: packages/runner/environments
+      dockerfile: ../images/Dockerfile
+      args:
+        ENVIRONMENT: torch
+    image: paperscholar-sandbox-torch
+    command: ["python", "-c", "import numpy, pytest, torch"]
+    network_mode: none
+    restart: "no"
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: paperscholar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: paperscholar
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperscholar -d paperscholar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  edge:
+  app:
+  data:
+  sandbox:
+
+# Back up postgres-data and storage together: progress is in one, papers in
+# the other (docs/specs/13-self-hosting.md §8).
+volumes:
+  postgres-data:
+  storage:
+  caddy-data:

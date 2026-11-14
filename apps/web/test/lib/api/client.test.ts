@@ -67,4 +67,20 @@ describe("apiRequest", () => {
     expect(seen?.credentials).toBe("same-origin");
     expect(new Headers(seen?.headers).get("Content-Type")).toBe("application/json");
   });
+
+  test("sends a FormData as it is, leaving the multipart header to the browser", async () => {
+    let seen: RequestInit | undefined;
+    const form = new FormData();
+    form.append("avatar", new File(["x"], "a.png", { type: "image/png" }));
+    await apiRequest("/v1/me/avatar", null, {
+      method: "POST",
+      body: form,
+      fetch: async (_url, init) => {
+        seen = init;
+        return new Response(null, { status: 204 });
+      },
+    });
+    expect(seen?.body).toBe(form);
+    expect(new Headers(seen?.headers).get("Content-Type")).toBeNull();
+  });
 });

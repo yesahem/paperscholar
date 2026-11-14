@@ -43,6 +43,21 @@ export class TestBrowser {
     return response;
   }
 
+  /** Sends `form` as multipart/form-data, as a browser's file upload would. */
+  async upload(path: string, form: FormData, method = "POST"): Promise<Response> {
+    const response = await this.app.request(path, {
+      method,
+      headers: {
+        "x-forwarded-for": this.ip,
+        Origin: WEB_ORIGIN,
+        ...(this.cookies.size > 0 ? { Cookie: this.cookieHeader() } : {}),
+      },
+      body: form,
+    });
+    this.store(response);
+    return response;
+  }
+
   private store(response: Response) {
     for (const header of response.headers.getSetCookie()) {
       const [pair = "", ...attributes] = header.split(";");

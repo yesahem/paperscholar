@@ -1,11 +1,13 @@
 import { Badge } from "@repo/ui/components/badge";
 import { buttonVariants } from "@repo/ui/components/button";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProblemList } from "@/components/content/problem-list";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
+import { ContinueButton } from "@/components/progress/continue-button";
+import { PaperProgress } from "@/components/progress/paper-progress";
 import { getPaper } from "@/lib/api/content";
 import { formatAuthors, formatTag, pluralise } from "@/lib/content/format";
 
@@ -39,7 +41,6 @@ export default async function PaperPage({ params }: PaperPageProps) {
   const { paperId } = await params;
   const paper = await getPaper(paperId);
   if (!paper) notFound();
-  const first = paper.problems[0];
 
   return (
     <PageContainer>
@@ -63,16 +64,16 @@ export default async function PaperPage({ params }: PaperPageProps) {
             </li>
           ))}
         </ul>
+        <PaperProgress
+          paperId={paper.id}
+          problemCount={paper.problemCount}
+          className="max-w-sm"
+        />
         <div className="mt-2 flex flex-wrap gap-3">
-          {first ? (
-            <Link
-              href={`/papers/${paper.id}/problems/${first.id}`}
-              className={buttonVariants({ size: "lg" })}
-            >
-              Start with step 1
-              <ArrowRight aria-hidden="true" />
-            </Link>
-          ) : null}
+          <ContinueButton
+            paperId={paper.id}
+            problems={paper.problems.map(({ id, order }) => ({ id, order }))}
+          />
           <a
             href={paper.url}
             target="_blank"

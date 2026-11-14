@@ -6,6 +6,12 @@ const envSchema = z.object({
   API_ORIGIN: httpOriginSchema,
   /** Canonical public URL of this site, for metadata and absolute links. */
   NEXT_PUBLIC_SITE_URL: httpOriginSchema,
+  /**
+   * Origin of the public bucket avatars are served from, when the backend
+   * stores them in R2 (its R2_PUBLIC_URL). Allowed as an image source by the
+   * Content-Security-Policy. Unset when avatars come from this site.
+   */
+  AVATAR_ORIGIN: httpOriginSchema.optional(),
 });
 
 export type WebEnv = z.output<typeof envSchema>;

@@ -1,5 +1,5 @@
 import { createMiddleware } from "hono/factory";
-import type { Logger } from "../lib/logger";
+import type { Logger } from "@repo/shared/logger";
 import type { AppEnv } from "../types";
 
 /** Attaches a request-scoped logger. Runs after the request-id middleware. */

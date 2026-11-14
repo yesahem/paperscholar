@@ -2,6 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { contentSecurityPolicy, securityHeaders } from "@/lib/security/headers";
 
 describe("security headers", () => {
+  test("avatars from a public bucket are allowed as images, and nothing else from it", () => {
+    const policy = contentSecurityPolicy({
+      development: false,
+      avatarOrigin: "https://avatars.example.com",
+    });
+    expect(policy).toContain("img-src 'self' data: blob: https://avatars.example.com");
+    expect(policy.match(/avatars\.example\.com/g)).toHaveLength(1);
+  });
+
   test("the production policy loads only from this origin and reports violations", () => {
     const policy = contentSecurityPolicy({ development: false });
     expect(policy).toContain("default-src 'self'");

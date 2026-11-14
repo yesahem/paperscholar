@@ -1,0 +1,13 @@
+$kind: http-request
+name: Who the account follows
+order: 4400
+method: GET
+url: "{{baseUrl}}/api/v1/users/{{username}}/following"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is an empty page', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json()).to.eql({ items: [], nextCursor: null });
+      });

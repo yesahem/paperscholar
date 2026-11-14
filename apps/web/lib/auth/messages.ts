@@ -46,6 +46,11 @@ const BY_CODE: Record<string, AuthProblem> = {
     field: null,
   },
   EMAIL_ALREADY_VERIFIED: { message: "Your email is already confirmed.", field: null },
+  INVALID_PASSWORD: { message: "Your current password is not right.", field: null },
+  CREDENTIAL_ACCOUNT_NOT_FOUND: {
+    message: "This account signs in with Google and has no password to change.",
+    field: null,
+  },
 };
 
 /** "a minute", "3 minutes" */

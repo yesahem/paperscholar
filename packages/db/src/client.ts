@@ -35,6 +35,9 @@ export function createDb({ url, maxConnections = 3, prepare = false }: DatabaseO
 
 export type Database = ReturnType<typeof createDb>;
 
+/** The client inside `db.transaction(async (tx) => …)`. */
+export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
 /** Closes every pooled connection. Call before a short-lived process exits. */
 export async function closeDb(db: Database): Promise<void> {
   await db.$client.close();

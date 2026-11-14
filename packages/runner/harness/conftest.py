@@ -9,9 +9,11 @@ author's message.
 from __future__ import annotations
 
 import importlib
+import io
 import json
 import os
 import signal
+import sys
 import traceback
 from pathlib import Path
 from typing import Any
@@ -30,6 +32,44 @@ GROUPS = {"test_public.py": "public", "test_hidden.py": "hidden"}
 
 class TimeLimitExceeded(BaseException):
     """Raised by the alarm. A BaseException, so `except Exception` in a submission cannot swallow it."""
+
+
+class CappedOutput(io.TextIOBase):
+    """Stands in for sys.stdout during a test: keeps the start, drops the rest.
+
+    Output never reaches a file, so printing far more than can be shown still
+    lets the test finish instead of failing on the sandbox's file-size limit.
+    """
+
+    def __init__(self, limit: int) -> None:
+        super().__init__()
+        self.limit = limit
+        self.parts: list[str] = []
+        self.kept = 0
+        self.dropped = 0
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, text: str) -> int:
+        if not isinstance(text, str):
+            raise TypeError(f"write() argument must be str, not {type(text).__name__}")
+        room = self.limit - self.kept
+        if room > 0:
+            self.parts.append(text[:room])
+            self.kept += min(room, len(text))
+        self.dropped += max(0, len(text) - max(room, 0))
+        return len(text)
+
+    def value(self) -> str | None:
+        text = "".join(self.parts)
+        if self.dropped:
+            note = f"\n… {self.dropped} more characters not shown"
+            text = text[: self.limit - len(note)] + note
+        return text or None
+
+
+STDOUT_KEY = pytest.StashKey[CappedOutput]()
 
 
 def emit(event: dict[str, Any]) -> None:
@@ -101,14 +141,20 @@ def pytest_collectreport(report: pytest.CollectReport) -> None:
         emit({"event": "collect_error", "nodeid": report.nodeid})
 
 
-@pytest.hookimpl(wrapper=True)
+# trylast: innermost, inside pytest's own capture, which would replace sys.stdout again.
+@pytest.hookimpl(wrapper=True, trylast=True)
 def pytest_runtest_call(item: pytest.Item) -> Any:
+    output = CappedOutput(MAX_STDOUT_CHARS)
+    item.stash[STDOUT_KEY] = output
+    previous_stdout = sys.stdout
+    sys.stdout = output
     signal.signal(signal.SIGALRM, on_alarm)
     signal.setitimer(signal.ITIMER_REAL, PER_TEST_TIMEOUT)
     try:
         return (yield)
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
+        sys.stdout = previous_stdout
 
 
 @pytest.hookimpl(wrapper=True)
@@ -145,7 +191,8 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
     if error is not None and public and not timed_out:
         trace = visible_frames(error, file_name)
 
-    stdout = report.capstdout[:MAX_STDOUT_CHARS] if public and report.capstdout else None
+    output = item.stash.get(STDOUT_KEY, None)
+    stdout = output.value() if public and output is not None else None
 
     emit(
         {

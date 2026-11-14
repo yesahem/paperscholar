@@ -1,0 +1,13 @@
+$kind: http-request
+name: Progress when signed out
+order: 1000
+method: GET
+url: "{{baseUrl}}/api/v1/progress"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is unauthenticated', () => {
+        pm.response.to.have.status(401);
+        pm.expect(pm.response.json().error.code).to.eql('unauthenticated');
+      });

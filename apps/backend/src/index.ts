@@ -4,11 +4,13 @@
  */
 import { createDb } from "@repo/db";
 import { waitUntil } from "@vercel/functions";
+import { createAvatarStore } from "./adapters/avatar-store";
 import { createContentReader } from "./adapters/content";
 import { createEmailSender } from "./adapters/email/create-email-sender";
+import { createSandboxProvider } from "./adapters/sandbox";
 import { createApp } from "./create-app";
 import { loadConfig } from "./env";
-import { createLogger } from "./lib/logger";
+import { createLogger } from "@repo/shared/logger";
 
 const config = loadConfig();
 const logger = createLogger({ level: config.logLevel });
@@ -19,6 +21,8 @@ export default createApp({
   content: createContentReader(config),
   db: createDb({ url: config.databaseUrl }),
   email: createEmailSender(config.email),
+  sandbox: createSandboxProvider(config, logger),
+  avatarStore: createAvatarStore(config),
   // Keeps the function alive until background work, such as an email, finishes.
   runInBackground: (task) => {
     waitUntil(

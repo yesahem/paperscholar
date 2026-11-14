@@ -7,8 +7,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@repo/ui/components/dropdown-menu";
+import { Avatar } from "@repo/ui/components/avatar";
 import { Skeleton } from "@repo/ui/components/skeleton";
-import { ChevronDown, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signOut } from "@/lib/auth/auth-api";
 import { useMe, useRefreshMe } from "@/lib/queries";
@@ -19,6 +21,7 @@ export function AccountControls() {
   const me = useMe();
   const dialog = useAuthDialog();
   const refreshMe = useRefreshMe();
+  const router = useRouter();
   const [signOutFailed, setSignOutFailed] = useState(false);
 
   if (me.isPending) return <Skeleton className="h-8 w-20" />;
@@ -30,6 +33,8 @@ export function AccountControls() {
       </Button>
     );
   }
+
+  const { username } = me.data;
 
   async function leave() {
     setSignOutFailed(false);
@@ -53,7 +58,12 @@ export function AccountControls() {
         triggerLabel={`Account: ${me.data.username}`}
         trigger={
           <>
-            <UserRound aria-hidden="true" />
+            <Avatar
+              src={me.data.avatarUrl}
+              name={me.data.username}
+              size="sm"
+              decorative
+            />
             <span className="hidden max-w-32 truncate sm:inline">{me.data.username}</span>
             <ChevronDown aria-hidden="true" />
           </>
@@ -65,6 +75,15 @@ export function AccountControls() {
           <br />
           {me.data.email}
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => router.push(`/profile/${username}`)}>
+          <UserRound aria-hidden="true" />
+          Your profile
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => router.push("/settings")}>
+          <Settings aria-hidden="true" />
+          Settings
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void leave()}>
           <LogOut aria-hidden="true" />

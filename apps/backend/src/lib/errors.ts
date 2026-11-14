@@ -12,6 +12,8 @@ export interface AppErrorOptions {
   details?: unknown;
   /** Underlying error, kept for logs and never sent to the client. */
   cause?: unknown;
+  /** Sent as `Retry-After` (docs/specs/05-api.md §3: every 429 carries it). */
+  retryAfterSeconds?: number;
 }
 
 /**
@@ -23,6 +25,7 @@ export class AppError extends Error {
   readonly code: ErrorCode;
   readonly status: ErrorStatus;
   readonly details: unknown;
+  readonly retryAfterSeconds: number | null;
 
   constructor(code: ErrorCode, options: AppErrorOptions = {}) {
     super(options.message ?? ERROR_MESSAGES[code], { cause: options.cause });
@@ -30,5 +33,6 @@ export class AppError extends Error {
     this.code = code;
     this.status = ERROR_STATUS[code];
     this.details = options.details;
+    this.retryAfterSeconds = options.retryAfterSeconds ?? null;
   }
 }

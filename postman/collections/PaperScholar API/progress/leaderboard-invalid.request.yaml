@@ -1,0 +1,18 @@
+$kind: http-request
+name: Leaderboard with an unknown sort
+order: 1600
+method: GET
+url: "{{baseUrl}}/api/v1/leaderboard?sort=karma"
+queryParams:
+  - key: sort
+    value: karma
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is a validation error naming the field', () => {
+        pm.response.to.have.status(400);
+        const error = pm.response.json().error;
+        pm.expect(error.code).to.eql('validation_error');
+        pm.expect(error.details.issues.map((issue) => issue.path)).to.include('sort');
+      });

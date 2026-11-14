@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --hot src/main.ts",
     "start": "bun src/main.ts",
+    "worker": "bun src/worker.ts",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "test": "bun test",
@@ -17,9 +18,11 @@
     "auth:schema": "auth generate --config scripts/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes && bun scripts/auth-schema-timestamptz.ts ../../packages/db/src/schema/auth.ts && prettier --write ../../packages/db/src/schema/auth.ts"
   },
   "dependencies": {
+    "@better-auth/core": "1.7.22",
     "@hono/zod-validator": "0.9.1",
     "@repo/content": "*",
     "@repo/db": "*",
+    "@repo/runner": "*",
     "@repo/shared": "*",
     "@repo/storage": "*",
     "@vercel/functions": "3.10.0",

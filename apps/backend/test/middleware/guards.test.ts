@@ -2,7 +2,7 @@ import type { FeatureFlags, Role } from "@repo/shared";
 import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import type { AuthUser } from "../../src/auth/auth";
-import { silentLogger } from "../../src/lib/logger";
+import { silentLogger } from "@repo/shared/logger";
 import { createErrorHandler } from "../../src/middleware/error-handler";
 import {
   requireAuth,

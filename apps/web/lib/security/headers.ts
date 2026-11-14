@@ -10,7 +10,16 @@
 
 export const CSP_REPORT_PATH = "/api/csp-report";
 
-export function contentSecurityPolicy({ development }: { development: boolean }): string {
+export interface PolicyOptions {
+  development: boolean;
+  /** Where avatars are served from when not this site (the R2 public bucket). */
+  avatarOrigin?: string;
+}
+
+export function contentSecurityPolicy({
+  development,
+  avatarOrigin,
+}: PolicyOptions): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
     // Next.js streams its payload in inline scripts; the dev server also evaluates code.
@@ -21,7 +30,8 @@ export function contentSecurityPolicy({ development }: { development: boolean })
     ],
     // The editor sets inline styles.
     "style-src": ["'self'", "'unsafe-inline'"],
-    "img-src": ["'self'", "data:", "blob:"],
+    // blob: shows an avatar chosen for upload before it is sent.
+    "img-src": ["'self'", "data:", "blob:", ...(avatarOrigin ? [avatarOrigin] : [])],
     "font-src": ["'self'", "data:"],
     "connect-src": ["'self'", ...(development ? ["ws:"] : [])],
     "worker-src": ["'self'", "blob:"],
@@ -37,15 +47,13 @@ export function contentSecurityPolicy({ development }: { development: boolean })
     .join("; ");
 }
 
-export function securityHeaders({
-  development,
-}: {
-  development: boolean;
-}): { key: string; value: string }[] {
+export function securityHeaders(
+  options: PolicyOptions,
+): { key: string; value: string }[] {
   return [
     {
       key: "Content-Security-Policy-Report-Only",
-      value: contentSecurityPolicy({ development }),
+      value: contentSecurityPolicy(options),
     },
     { key: "Reporting-Endpoints", value: `csp="${CSP_REPORT_PATH}"` },
     {

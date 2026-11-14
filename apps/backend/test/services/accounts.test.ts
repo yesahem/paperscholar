@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createAuth } from "../../src/auth/auth";
-import { silentLogger } from "../../src/lib/logger";
+import { silentLogger } from "@repo/shared/logger";
 import {
   createAccounts,
   isUniqueViolation,
@@ -42,7 +42,12 @@ describe.skipIf(!DATABASE_URL)("roles and passwords", () => {
       logger: silentLogger,
       runInBackground: () => {},
     });
-    return createAccounts({ db: database.db, auth });
+    return createAccounts({
+      db: database.db,
+      auth,
+      avatars: { url: (key) => `/avatars/${key}`, delete: async () => {} },
+      logger: silentLogger,
+    });
   }
 
   async function newUser(app = createTestApp({}, undefined, { db: database.db }).app) {

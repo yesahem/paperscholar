@@ -1,0 +1,44 @@
+$kind: http-request
+name: Get the run until it finishes
+order: 4000
+method: GET
+url: "{{baseUrl}}/api/v1/submissions/{{submissionId}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.response.to.have.status(200);
+      const submission = pm.response.json();
+      const polls = Number(pm.variables.get('polls') ?? 0);
+      const waiting = submission.status === 'queued' || submission.status === 'running';
+      if (waiting && polls < 60) {
+        pm.variables.set('polls', polls + 1);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        pm.execution.setNextRequest('Get the run until it finishes');
+      } else {
+      pm.test('returns the documented fields', () => {
+        pm.expect(submission).to.have.all.keys(
+          'id', 'paperId', 'problemId', 'mode', 'status', 'verdict', 'testsPassed',
+          'testsTotal', 'tests', 'violations', 'errorOutput', 'durationMs', 'createdAt',
+          'finishedAt', 'code'
+        );
+        pm.expect(submission.id).to.eql(pm.collectionVariables.get('submissionId'));
+        pm.expect(submission.mode).to.eql('run');
+        pm.expect(submission.code).to.eql(pm.collectionVariables.get('starter'));
+      });
+      pm.test('the starter is graded and fails, with per-test results', () => {
+        pm.expect(submission.status).to.eql('completed');
+        pm.expect(submission.verdict).to.not.eql('passed');
+        pm.expect(submission.tests).to.be.an('array').that.is.not.empty;
+        for (const test of submission.tests) {
+          pm.expect(test).to.have.all.keys('name', 'group', 'status', 'durationMs', 'message', 'traceback', 'stdout');
+          // A run executes only the public tests.
+          pm.expect(test.group).to.eql('public');
+        }
+        pm.expect(submission.testsTotal).to.eql(submission.tests.length);
+        pm.expect(new Date(submission.finishedAt).toISOString()).to.eql(submission.finishedAt);
+      });
+      pm.test('is never cached', () => {
+        pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store');
+      });
+      }

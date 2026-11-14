@@ -9,6 +9,7 @@ import {
 } from "@repo/ui/components/card";
 import Link from "next/link";
 import { formatAuthors, formatTag, pluralise } from "@/lib/content/format";
+import { PaperProgress } from "@/components/progress/paper-progress";
 import { DifficultyMix } from "./difficulty-badge";
 
 /** A paper in the catalogue. The whole card is one link to the paper. */
@@ -45,6 +46,7 @@ export function PaperCard({ paper }: { paper: PaperSummary }) {
             </span>
             <DifficultyMix counts={paper.difficultyCounts} />
           </div>
+          <PaperProgress paperId={paper.id} problemCount={paper.problemCount} />
         </div>
       </CardContent>
     </Card>

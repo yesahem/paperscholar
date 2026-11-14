@@ -4,16 +4,20 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "test": "bun test",
-    "runner:setup": "bun run scripts/setup-python.ts"
+    "runner:setup": "bun run scripts/setup-python.ts",
+    "runner:images": "bun run scripts/build-images.ts",
+    "runner:adversarial": "bun run scripts/adversarial.ts"
   },
   "dependencies": {
     "@repo/shared": "*",
+    "@vercel/sandbox": "3.9.1",
     "zod": "4.6.7"
   },
   "devDependencies": {

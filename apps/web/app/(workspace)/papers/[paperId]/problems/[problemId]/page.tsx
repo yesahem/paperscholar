@@ -1,11 +1,11 @@
 import { buttonVariants } from "@repo/ui/components/button";
-import { Tab, TabList, TabPanel, Tabs } from "@repo/ui/components/tabs";
 import { ArrowRight, Flag } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DifficultyBadge } from "@/components/content/difficulty-badge";
 import { Markdown } from "@/components/content/markdown";
+import { SolvedMark } from "@/components/progress/solved-mark";
 import { LimitsBox } from "@/components/workspace/limits-box";
 import { Workspace } from "@/components/workspace/workspace";
 import { getPaper, getProblem } from "@/lib/api/content";
@@ -71,52 +71,42 @@ export default async function ProblemPage({ params }: ProblemPageProps) {
       </nav>
       <h1 className="truncate font-semibold">{problem.title}</h1>
       <DifficultyBadge difficulty={problem.difficulty} />
+      <SolvedMark paperId={paperId} problemId={problemId} variant="badge" />
     </div>
   );
 
-  const instructions = (
-    <Tabs defaultValue="description" className="min-h-full">
-      <TabList aria-label="Problem" className="sticky top-0 z-10 bg-background px-4">
-        <Tab value="description">Description</Tab>
-        {problem.tutorial ? <Tab value="tutorial">Tutorial</Tab> : null}
-      </TabList>
-      <TabPanel value="description" className="flex flex-col gap-6 p-4 sm:p-6">
-        <Markdown>{problem.description}</Markdown>
-        <LimitsBox problem={problem} />
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <a
-            href={problemReportUrl({ paperId, problemId, title: problem.title, pageUrl })}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+  const description = (
+    <>
+      <Markdown>{problem.description}</Markdown>
+      <LimitsBox problem={problem} />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+        <a
+          href={problemReportUrl({ paperId, problemId, title: problem.title, pageUrl })}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          <Flag aria-hidden="true" className="size-3.5" />
+          Report a problem with this step
+        </a>
+        {next ? (
+          <Link
+            href={`/papers/${paperId}/problems/${next.id}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            <Flag aria-hidden="true" className="size-3.5" />
-            Report a problem with this step
-          </a>
-          {next ? (
-            <Link
-              href={`/papers/${paperId}/problems/${next.id}`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Next: {next.title}
-              <ArrowRight aria-hidden="true" />
-            </Link>
-          ) : (
-            <Link
-              href={`/papers/${paperId}`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Back to {paper.title}
-            </Link>
-          )}
-        </div>
-      </TabPanel>
-      {problem.tutorial ? (
-        <TabPanel value="tutorial" className="p-4 sm:p-6">
-          <Markdown>{problem.tutorial}</Markdown>
-        </TabPanel>
-      ) : null}
-    </Tabs>
+            Next: {next.title}
+            <ArrowRight aria-hidden="true" />
+          </Link>
+        ) : (
+          <Link
+            href={`/papers/${paperId}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Back to {paper.title}
+          </Link>
+        )}
+      </div>
+    </>
   );
 
   return (
@@ -125,8 +115,17 @@ export default async function ProblemPage({ params }: ProblemPageProps) {
       problemId={problemId}
       problemTitle={problem.title}
       starter={problem.starter}
+      allowedPackages={problem.allowedPackages}
+      timeLimitSeconds={problem.timeLimitSeconds}
+      memoryLimitMb={problem.memoryLimitMb}
+      next={
+        next
+          ? { href: `/papers/${paperId}/problems/${next.id}`, title: next.title }
+          : null
+      }
       heading={heading}
-      instructions={instructions}
+      description={description}
+      tutorial={problem.tutorial ? <Markdown>{problem.tutorial}</Markdown> : null}
     />
   );
 }

@@ -7,13 +7,21 @@ import {
 import type { StorageConfig } from "@repo/storage";
 import { resolve } from "node:path";
 import { z } from "zod";
-import type { LogLevel } from "./lib/logger";
+import type { LogLevel } from "@repo/shared/logger";
 
 /** Default listen port for Bun.serve. Chosen to avoid the common 8787/8080. */
 export const DEFAULT_PORT = 8797;
 
 /** Default daily run allowance per user (docs/specs/11-security-ops.md §3). */
 export const DEFAULT_RUNS_PER_DAY = 100;
+/** Default runs per user per minute (docs/specs/07-runner.md §9). */
+export const DEFAULT_RUNS_PER_MINUTE = 10;
+/** Default ceiling on runs per day across the instance: a spending circuit-breaker. */
+export const DEFAULT_GLOBAL_RUNS_PER_DAY = 20_000;
+/** Default writes per user per minute (docs/specs/11-security-ops.md §3). */
+export const DEFAULT_MUTATIONS_PER_MINUTE = 60;
+/** Shortest accepted RUNNER_TOKEN and INTERNAL_SECRET. */
+export const MIN_SHARED_SECRET_LENGTH = 32;
 
 /** Sign-in, sign-up and reset requests allowed per IP per window (docs/specs/11-security-ops.md §3). */
 export const DEFAULT_AUTH_RATE_LIMIT_MAX = 10;
@@ -23,6 +31,23 @@ export const DEFAULT_AUTH_RATE_LIMIT_WINDOW_SECONDS = 600;
 export const MIN_AUTH_SECRET_LENGTH = 32;
 
 const EMAIL_DRIVERS = ["none", "log", "resend", "smtp"] as const;
+const RUNNER_PROVIDERS = ["local", "http", "vercel"] as const;
+
+const positiveCount = (fallback: number) =>
+  z.coerce
+    .number({ error: "must be a number" })
+    .int("must be a whole number")
+    .min(1, "must be at least 1")
+    .default(fallback);
+
+const sharedSecret = (command: string) =>
+  z
+    .string()
+    .min(
+      MIN_SHARED_SECRET_LENGTH,
+      `must be at least ${MIN_SHARED_SECRET_LENGTH} characters (${command})`,
+    )
+    .optional();
 
 const optionalText = z.string().trim().min(1).optional();
 
@@ -50,11 +75,24 @@ const envSchema = z
           : "must be a postgres:// connection URL",
     }),
 
-    RUNS_PER_DAY: z.coerce
-      .number({ error: "must be a number" })
-      .int("must be a whole number")
-      .min(1, "must be at least 1")
-      .default(DEFAULT_RUNS_PER_DAY),
+    RUNS_PER_DAY: positiveCount(DEFAULT_RUNS_PER_DAY),
+    RUNS_PER_MINUTE: positiveCount(DEFAULT_RUNS_PER_MINUTE),
+    GLOBAL_RUNS_PER_DAY: positiveCount(DEFAULT_GLOBAL_RUNS_PER_DAY),
+    MUTATIONS_PER_MINUTE: positiveCount(DEFAULT_MUTATIONS_PER_MINUTE),
+
+    RUNNER_PROVIDER: z.enum(RUNNER_PROVIDERS).optional(),
+    RUNNER_PYTHON: optionalText,
+    RUNNER_URL: z
+      .url({ protocol: /^https?$/, error: "must be an http(s) URL" })
+      .optional(),
+    RUNNER_TOKEN: sharedSecret("openssl rand -hex 32"),
+    RUNNER_IMAGE_NUMPY: optionalText,
+    RUNNER_IMAGE_TORCH: optionalText,
+    VERCEL_TEAM_ID: optionalText,
+    VERCEL_PROJECT_ID: optionalText,
+    VERCEL_TOKEN: optionalText,
+
+    INTERNAL_SECRET: sharedSecret("openssl rand -hex 32"),
 
     STORAGE_DRIVER: z.enum(["fs", "r2"]).default("fs"),
     STORAGE_FS_PATH: z.string().trim().min(1).default(".storage"),
@@ -66,6 +104,11 @@ const envSchema = z
     R2_ACCESS_KEY_ID: optionalText,
     R2_SECRET_ACCESS_KEY: optionalText,
     R2_BUCKET: optionalText,
+    R2_PUBLIC_BUCKET: optionalText,
+    R2_PUBLIC_URL: z
+      .url({ protocol: /^https?$/, error: "must be an http(s) URL" })
+      .transform((url) => url.replace(/\/+$/, ""))
+      .optional(),
 
     BETTER_AUTH_SECRET: z
       .string({
@@ -124,6 +167,8 @@ const envSchema = z
       require("R2_ACCESS_KEY_ID", "when STORAGE_DRIVER is r2");
       require("R2_SECRET_ACCESS_KEY", "when STORAGE_DRIVER is r2");
       require("R2_BUCKET", "when STORAGE_DRIVER is r2");
+      require("R2_PUBLIC_BUCKET", "when STORAGE_DRIVER is r2 (avatars)");
+      require("R2_PUBLIC_URL", "when STORAGE_DRIVER is r2 (avatars)");
       if (env.R2_ACCOUNT_ID === undefined && env.R2_ENDPOINT === undefined) {
         context.addIssue({
           code: "custom",
@@ -148,6 +193,43 @@ const envSchema = z
         code: "custom",
         path: ["GOOGLE_CLIENT_ID"],
         message: "and GOOGLE_CLIENT_SECRET must be set together",
+      });
+    }
+
+    const runner = runnerProvider(env);
+    if (runner === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["RUNNER_PROVIDER"],
+        message:
+          "is required in production: http for the bundled runner, vercel for Vercel Sandbox",
+      });
+    }
+    if (runner === "local" && env.NODE_ENV === "production") {
+      context.addIssue({
+        code: "custom",
+        path: ["RUNNER_PROVIDER"],
+        message: "cannot be local in production: the local runner isolates nothing",
+      });
+    }
+    if (runner === "http") {
+      require("RUNNER_URL", "when RUNNER_PROVIDER is http");
+      require("RUNNER_TOKEN", "when RUNNER_PROVIDER is http");
+    }
+    if (runner === "vercel") {
+      require("RUNNER_IMAGE_NUMPY", "when RUNNER_PROVIDER is vercel");
+      require("RUNNER_IMAGE_TORCH", "when RUNNER_PROVIDER is vercel");
+    }
+    const vercelCredentials = [
+      env.VERCEL_TEAM_ID,
+      env.VERCEL_PROJECT_ID,
+      env.VERCEL_TOKEN,
+    ];
+    if (new Set(vercelCredentials.map((value) => value === undefined)).size > 1) {
+      context.addIssue({
+        code: "custom",
+        path: ["VERCEL_TEAM_ID"],
+        message: "VERCEL_PROJECT_ID and VERCEL_TOKEN must be set together",
       });
     }
 
@@ -181,6 +263,15 @@ function emailDriver(env: Pick<Env, "EMAIL_DRIVER" | "NODE_ENV">): EmailDriver {
   return env.EMAIL_DRIVER ?? (env.NODE_ENV === "development" ? "log" : "none");
 }
 
+/** Outside production, runs default to the local provider; production must choose. */
+function runnerProvider(
+  env: Pick<Env, "RUNNER_PROVIDER" | "NODE_ENV">,
+): RunnerProviderName | undefined {
+  return env.RUNNER_PROVIDER ?? (env.NODE_ENV === "production" ? undefined : "local");
+}
+
+type RunnerProviderName = (typeof RUNNER_PROVIDERS)[number];
+
 /** Reads a value the schema has already made mandatory for this configuration. */
 function present<T>(value: T | undefined, name: string): T {
   if (value === undefined) throw new Error(`${name} passed validation but is missing`);
@@ -198,6 +289,23 @@ function storageConfig(env: Env): StorageConfig {
     bucket: present(env.R2_BUCKET, "R2_BUCKET"),
     accessKeyId: present(env.R2_ACCESS_KEY_ID, "R2_ACCESS_KEY_ID"),
     secretAccessKey: present(env.R2_SECRET_ACCESS_KEY, "R2_SECRET_ACCESS_KEY"),
+  };
+}
+
+/**
+ * Where avatars live (docs/specs/03-content.md §2.4). With `fs` they sit in
+ * the storage folder and the API serves them; with `r2` they go to the public
+ * bucket and browsers fetch them from its URL.
+ */
+export type AvatarStorageConfig =
+  { driver: "fs" } | { driver: "r2"; bucket: string; publicUrl: string };
+
+function avatarStorageConfig(env: Env): AvatarStorageConfig {
+  if (env.STORAGE_DRIVER === "fs") return { driver: "fs" };
+  return {
+    driver: "r2",
+    bucket: present(env.R2_PUBLIC_BUCKET, "R2_PUBLIC_BUCKET"),
+    publicUrl: present(env.R2_PUBLIC_URL, "R2_PUBLIC_URL"),
   };
 }
 
@@ -245,6 +353,57 @@ function emailConfig(env: Env): EmailConfig {
   }
 }
 
+/** Where learners' code runs (docs/specs/07-runner.md §8). */
+export type RunnerConfig =
+  | { provider: "local"; pythonPath: string | null }
+  | { provider: "http"; url: string; token: string }
+  | {
+      provider: "vercel";
+      images: { numpy: string; torch: string };
+      credentials: { teamId: string; projectId: string; token: string } | null;
+    };
+
+function runnerConfig(env: Env): RunnerConfig {
+  const provider = present(runnerProvider(env), "RUNNER_PROVIDER");
+  switch (provider) {
+    case "local":
+      return { provider, pythonPath: env.RUNNER_PYTHON ?? null };
+    case "http":
+      return {
+        provider,
+        url: present(env.RUNNER_URL, "RUNNER_URL"),
+        token: present(env.RUNNER_TOKEN, "RUNNER_TOKEN"),
+      };
+    case "vercel":
+      return {
+        provider,
+        images: {
+          numpy: present(env.RUNNER_IMAGE_NUMPY, "RUNNER_IMAGE_NUMPY"),
+          torch: present(env.RUNNER_IMAGE_TORCH, "RUNNER_IMAGE_TORCH"),
+        },
+        credentials:
+          env.VERCEL_TEAM_ID === undefined
+            ? null
+            : {
+                teamId: env.VERCEL_TEAM_ID,
+                projectId: present(env.VERCEL_PROJECT_ID, "VERCEL_PROJECT_ID"),
+                token: present(env.VERCEL_TOKEN, "VERCEL_TOKEN"),
+              },
+      };
+  }
+}
+
+export interface LimitsConfig {
+  /** Submissions per user per UTC day; internal errors are not counted. */
+  runsPerDay: number;
+  /** Submission attempts per user per minute. */
+  runsPerMinute: number;
+  /** Submissions per UTC day across the instance; over it, 503. */
+  globalRunsPerDay: number;
+  /** Writes (POST, PATCH, PUT, DELETE under /v1) per user per minute. */
+  mutationsPerMinute: number;
+}
+
 export interface AuthConfig {
   /** Signs session cookies and tokens. Rotating it signs everyone out. */
   secret: string;
@@ -276,10 +435,13 @@ export interface AppConfig {
   databaseUrl: string;
   /** Where paper content and uploads live (docs/specs/03-content.md §2.4). */
   storage: StorageConfig;
-  /** Limits published at GET /v1/config and enforced from M4. */
-  limits: {
-    runsPerDay: number;
-  };
+  /** Where avatars are stored and served from. */
+  avatars: AvatarStorageConfig;
+  /** Limits enforced by the API; `runsPerDay` is published at GET /v1/config. */
+  limits: LimitsConfig;
+  runner: RunnerConfig;
+  /** Bearer token for /api/internal/*; null switches those endpoints off. */
+  internalSecret: string | null;
   auth: AuthConfig;
   email: EmailConfig;
 }
@@ -303,7 +465,15 @@ export function loadConfig(
     version: env.APP_VERSION ?? env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "dev",
     databaseUrl: env.DATABASE_URL,
     storage: storageConfig(env),
-    limits: { runsPerDay: env.RUNS_PER_DAY },
+    avatars: avatarStorageConfig(env),
+    limits: {
+      runsPerDay: env.RUNS_PER_DAY,
+      runsPerMinute: env.RUNS_PER_MINUTE,
+      globalRunsPerDay: env.GLOBAL_RUNS_PER_DAY,
+      mutationsPerMinute: env.MUTATIONS_PER_MINUTE,
+    },
+    runner: runnerConfig(env),
+    internalSecret: env.INTERNAL_SECRET ?? null,
     auth: {
       secret: env.BETTER_AUTH_SECRET,
       adminEmails: env.ADMIN_EMAILS.map((email) => email.toLowerCase()),

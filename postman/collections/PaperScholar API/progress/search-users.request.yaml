@@ -1,0 +1,19 @@
+$kind: http-request
+name: Search users by prefix
+order: 4200
+method: GET
+url: "{{baseUrl}}/api/v1/users?q={{username}}"
+queryParams:
+  - key: q
+    value: "{{username}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('finds the account, as a card without email', () => {
+        pm.response.to.have.status(200);
+        const body = pm.response.json();
+        pm.expect(body.items).to.eql([
+          { username: pm.collectionVariables.get('username'), avatarUrl: null },
+        ]);
+      });

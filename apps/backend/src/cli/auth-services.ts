@@ -1,7 +1,8 @@
 import { closeDb, createDb } from "@repo/db";
+import { createAvatarStore } from "../adapters/avatar-store";
 import { createAuth } from "../auth/auth";
 import type { AppConfig } from "../env";
-import { createLogger } from "../lib/logger";
+import { createLogger } from "@repo/shared/logger";
 import { createAccounts, type Accounts } from "../services/accounts";
 import { createRateLimiter } from "../services/rate-limiter";
 
@@ -25,5 +26,8 @@ export function createAccountServices(config: AppConfig): AccountServices {
       task.catch((error: unknown) => logger.error("background task failed", { error }));
     },
   });
-  return { accounts: createAccounts({ db, auth }), close: () => closeDb(db) };
+  return {
+    accounts: createAccounts({ db, auth, avatars: createAvatarStore(config), logger }),
+    close: () => closeDb(db),
+  };
 }

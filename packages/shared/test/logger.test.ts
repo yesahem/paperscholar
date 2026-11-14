@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createLogger, type LogLevel } from "../src/lib/logger";
+import { createLogger, type LogLevel } from "../src/logger";
 
 function capture(level: LogLevel) {
   const lines: { level: LogLevel; entry: Record<string, unknown> }[] = [];

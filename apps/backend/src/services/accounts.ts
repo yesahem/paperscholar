@@ -8,8 +8,10 @@ import {
   type Me,
   type Role,
 } from "@repo/shared";
+import type { Logger } from "@repo/shared/logger";
 import { APIError } from "better-auth/api";
 import type { Auth } from "../auth/auth";
+import type { AvatarStore } from "../adapters/avatar-store";
 import { AppError } from "../lib/errors";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -24,6 +26,9 @@ export interface ProfileChanges {
 export interface AccountsDependencies {
   db: Database;
   auth: Auth;
+  /** Where avatars are kept: for their URLs, and to delete them with the account. */
+  avatars: Pick<AvatarStore, "url" | "delete">;
+  logger: Logger;
   now?: () => Date;
 }
 
@@ -58,6 +63,8 @@ export class LastAdminError extends Error {
 export function createAccounts({
   db,
   auth,
+  avatars,
+  logger,
   now = () => new Date(),
 }: AccountsDependencies) {
   async function load(userId: string) {
@@ -70,6 +77,7 @@ export function createAccounts({
         role: schema.user.role,
         createdAt: schema.user.createdAt,
         bio: schema.profiles.bio,
+        avatarKey: schema.profiles.avatarKey,
         usernameChangedAt: schema.profiles.usernameChangedAt,
       })
       .from(schema.user)
@@ -85,7 +93,7 @@ export function createAccounts({
       username: row.username ?? "",
       email: row.email,
       emailVerified: row.emailVerified,
-      avatarUrl: null,
+      avatarUrl: row.avatarKey ? avatars.url(row.avatarKey) : null,
       bio: row.bio ?? null,
       role: roleSchema.catch("user").parse(row.role),
       createdAt: row.createdAt.toISOString(),
@@ -190,14 +198,27 @@ export function createAccounts({
     },
 
     /**
-     * Deletes the account and its sessions. Every row referencing the user
-     * goes with it (foreign keys cascade); content the user created keeps
-     * existing without an author. Call `confirmDeletion` first.
+     * Deletes the account, its sessions and its avatar file. Every row
+     * referencing the user goes with it (foreign keys cascade); content the
+     * user created keeps existing without an author. Call `confirmDeletion`
+     * first.
      */
     async deleteAccount(userId: string): Promise<void> {
+      const row = await load(userId);
       const context = await auth.$context;
       await context.internalAdapter.deleteUserSessions(userId);
       await context.internalAdapter.deleteUser(userId);
+      if (row?.avatarKey) {
+        try {
+          await avatars.delete(row.avatarKey);
+        } catch (error) {
+          // The account is gone; the file is unreachable without its key. Logged to remove by hand.
+          logger.error("avatar of a deleted account not removed", {
+            key: row.avatarKey,
+            error,
+          });
+        }
+      }
     },
 
     currentRole,

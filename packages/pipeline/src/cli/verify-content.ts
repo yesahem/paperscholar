@@ -3,13 +3,21 @@
  * (docs/specs/03-content.md §8, checks V1–V6 and V10).
  *
  *   bun run content:verify [--content <dir>] [--paper <id>] [--concurrency <n>]
+ *                          [--provider local|http]
  *
- * Uses the local runner, so it needs the Python environment from
- * `bun run runner:setup` (or RUNNER_PYTHON). Exit code 0 when every problem
- * passes, 1 when any fails, 2 when the content folder itself is invalid.
+ * By default it uses the local runner, which needs the Python environment from
+ * `bun run runner:setup` (or RUNNER_PYTHON). `--provider http` checks the same
+ * problems on the bundled runner service instead (RUNNER_URL, RUNNER_TOKEN).
+ * Exit code 0 when every problem passes, 1 when any fails, 2 when the content
+ * folder itself or the configuration is invalid.
  */
 import { ContentValidationError, readContentLibrary } from "@repo/content";
-import { defaultLocalPythonPath, LocalProvider } from "@repo/runner";
+import {
+  defaultLocalPythonPath,
+  HttpRunnerProvider,
+  LocalProvider,
+  type SandboxProvider,
+} from "@repo/runner";
 import { EnvError, parseEnv } from "@repo/shared";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -25,6 +33,7 @@ const { values: args } = parseArgs({
     content: { type: "string", default: DEFAULT_CONTENT_ROOT },
     paper: { type: "string" },
     concurrency: { type: "string", default: "2" },
+    provider: { type: "string", default: "local" },
   },
   strict: true,
 });
@@ -35,6 +44,8 @@ function readEnv() {
       z.object({
         NODE_ENV: z.string().optional(),
         RUNNER_PYTHON: z.string().optional(),
+        RUNNER_URL: z.string().optional(),
+        RUNNER_TOKEN: z.string().optional(),
       }),
       process.env,
       { app: "content:verify", exampleFile: "packages/pipeline/.env.example" },
@@ -108,11 +119,26 @@ if (args.paper && papers.length === 0) {
 const problems: VerifiableProblem[] = papers.flatMap((paper) =>
   paper.problems.map((problem) => verifiableFromSource(paper, problem)),
 );
-const pythonPath = env.RUNNER_PYTHON ?? defaultLocalPythonPath();
-const provider = new LocalProvider({ pythonPath, nodeEnv: env.NODE_ENV });
+let provider: SandboxProvider;
+let where: string;
+if (args.provider === "http") {
+  if (!env.RUNNER_URL || !env.RUNNER_TOKEN) {
+    console.error("content:verify: --provider http needs RUNNER_URL and RUNNER_TOKEN.");
+    process.exit(2);
+  }
+  provider = new HttpRunnerProvider({ url: env.RUNNER_URL, token: env.RUNNER_TOKEN });
+  where = `runner service ${env.RUNNER_URL}`;
+} else if (args.provider === "local") {
+  const pythonPath = env.RUNNER_PYTHON ?? defaultLocalPythonPath();
+  provider = new LocalProvider({ pythonPath, nodeEnv: env.NODE_ENV });
+  where = `Python ${pythonPath}`;
+} else {
+  console.error("content:verify: --provider must be local or http.");
+  process.exit(2);
+}
 
 console.log(
-  `content:verify: ${papers.length} paper(s), ${problems.length} problem(s), Python ${pythonPath}, concurrency ${concurrency}`,
+  `content:verify: ${papers.length} paper(s), ${problems.length} problem(s), ${where}, concurrency ${concurrency}`,
 );
 const started = performance.now();
 const reports = await runPool(problems, concurrency, async (problem) => {
