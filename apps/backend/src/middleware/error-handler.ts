@@ -3,7 +3,7 @@ import type { Context, ErrorHandler, NotFoundHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { AppError } from "../lib/errors";
-import type { Logger } from "../lib/logger";
+import type { Logger } from "@repo/shared/logger";
 import type { AppEnv } from "../types";
 
 /** Codes for errors Hono raises itself, such as malformed JSON. */
@@ -47,6 +47,9 @@ export function createErrorHandler(rootLogger: Logger): ErrorHandler<AppEnv> {
     if (error instanceof AppError) {
       if (error.status >= 500)
         logger.error("request failed", { code: error.code, error });
+      if (error.retryAfterSeconds !== null) {
+        c.header("Retry-After", String(Math.max(1, Math.ceil(error.retryAfterSeconds))));
+      }
       return respond(c, error.status, error.code, error.message, error.details);
     }
 

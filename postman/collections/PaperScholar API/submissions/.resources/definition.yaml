@@ -1,0 +1,8 @@
+$kind: collection
+name: Submissions
+description: |-
+  Running code (docs/specs/05-api.md §6) as a throwaway account, deleted at the
+  end. On an instance that requires a confirmed email, the run is refused with
+  403 and the remaining run checks are skipped; elsewhere the starter of the
+  problem found by the content folder is run and followed to its verdict.
+order: 3500

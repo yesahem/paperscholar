@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createAuth } from "../../src/auth/auth";
-import { silentLogger } from "../../src/lib/logger";
+import { silentLogger } from "@repo/shared/logger";
 import {
   createAccounts,
   isUniqueViolation,

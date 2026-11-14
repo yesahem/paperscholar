@@ -5,8 +5,9 @@
 import { closeDb, createDb } from "@repo/db";
 import { createContentReader } from "./adapters/content";
 import { createEmailSender } from "./adapters/email/create-email-sender";
+import { createSandboxProvider } from "./adapters/sandbox";
 import { createApp } from "./create-app";
-import { createLogger } from "./lib/logger";
+import { createLogger } from "@repo/shared/logger";
 import { loadConfigOrExit } from "./load-config";
 
 const config = loadConfigOrExit();
@@ -18,6 +19,7 @@ const app = createApp({
   content: createContentReader(config),
   db,
   email: createEmailSender(config.email),
+  sandbox: createSandboxProvider(config, logger),
   // The process outlives each request, so background work just needs its errors logged.
   runInBackground: (task) => {
     task.catch((error: unknown) => logger.error("background task failed", { error }));

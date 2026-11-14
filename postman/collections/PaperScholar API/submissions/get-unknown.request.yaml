@@ -1,0 +1,13 @@
+$kind: http-request
+name: Get a submission that is not yours
+order: 7000
+method: GET
+url: "{{baseUrl}}/api/v1/submissions/01890a5d-ac96-774b-bcce-b302099a8057"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is 404, as for anything not yours', () => {
+        pm.response.to.have.status(404);
+        pm.expect(pm.response.json().error.code).to.eql('not_found');
+      });

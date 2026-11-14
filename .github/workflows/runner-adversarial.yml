@@ -1,0 +1,94 @@
+name: Runner adversarial suite
+
+# The submissions of docs/specs/07-runner.md §10 against the providers that
+# serve the public: nightly, by hand, and whenever the runner changes.
+on:
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/runner/**"
+      - "apps/runner/**"
+      - "docker-compose.yml"
+
+concurrency:
+  group: adversarial-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: 1.3.14
+
+jobs:
+  bundled-runner:
+    name: Bundled Docker runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build the sandbox images
+        run: bun run runner:images
+
+      # A token generated per run, never stored.
+      - name: Start the runner service
+        run: |
+          echo "RUNNER_TOKEN=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "RUNNER_URL=http://localhost:8798" >> "$GITHUB_ENV"
+
+      - name: Run the suite
+        run: |
+          nohup bun apps/runner/src/main.ts > "$RUNNER_TEMP/runner.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl -sf http://localhost:8798/health > /dev/null && break
+            sleep 1
+          done
+          bun run runner:adversarial --provider http || { cat "$RUNNER_TEMP/runner.log"; exit 1; }
+
+  hosted-sandbox:
+    name: Vercel Sandbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Needs the maintainer's Vercel credentials and pushed images
+    # (packages/runner/.env.example); skipped until they are configured.
+    env:
+      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      RUNNER_IMAGE_NUMPY: ${{ vars.RUNNER_IMAGE_NUMPY }}
+      RUNNER_IMAGE_TORCH: ${{ vars.RUNNER_IMAGE_TORCH }}
+    steps:
+      - name: Check configuration
+        id: configured
+        run: |
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$RUNNER_IMAGE_NUMPY" ] && [ -n "$RUNNER_IMAGE_TORCH" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Vercel Sandbox credentials or images are not configured; skipping."
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.configured.outputs.ready == 'true'
+
+      - uses: oven-sh/setup-bun@v2
+        if: steps.configured.outputs.ready == 'true'
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        if: steps.configured.outputs.ready == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Run the suite
+        if: steps.configured.outputs.ready == 'true'
+        run: bun run runner:adversarial --provider vercel

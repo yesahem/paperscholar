@@ -5,7 +5,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import type { EmailSender } from "../adapters/email/types";
 import { verifiesEmail, type AppConfig } from "../env";
-import type { Logger } from "../lib/logger";
+import type { Logger } from "@repo/shared/logger";
 import { passwordResetEmail, verificationEmail } from "../services/email-templates";
 import type { RateLimiter } from "../services/rate-limiter";
 import { generateUsername } from "../services/usernames";

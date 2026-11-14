@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --hot src/main.ts",
     "start": "bun src/main.ts",
+    "worker": "bun src/worker.ts",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "test": "bun test",
@@ -20,6 +21,7 @@
     "@hono/zod-validator": "0.9.1",
     "@repo/content": "*",
     "@repo/db": "*",
+    "@repo/runner": "*",
     "@repo/shared": "*",
     "@repo/storage": "*",
     "@vercel/functions": "3.10.0",

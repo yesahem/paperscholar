@@ -81,6 +81,18 @@ describe.skipIf(!hasNumpyEnvironment)("local provider with the harness", () => {
     });
   });
 
+  test("printing 100 MB still passes, with the output cut to 4 KB", async () => {
+    // Regression: pytest's capture file hit the 16 MB file-size limit and the
+    // print raised "File too large", failing correct code.
+    const noisy = `import numpy as np\n\n\ndef relu(x):\n    chunk = "x" * 1_000_000\n    for _ in range(100):\n        print(chunk)\n    return np.maximum(x, 0)\n`;
+    const result = await run(noisy, "run");
+    expect(toVerdict(result).verdict).toBe("passed");
+    for (const test of result.tests) {
+      expect(test.stdout?.length ?? 0).toBeLessThanOrEqual(4096);
+      expect(test.stdout).toContain("more characters not shown");
+    }
+  });
+
   test("an infinite loop in the function hits the per-test time limit", async () => {
     const result = await run("def relu(x):\n    while True:\n        pass\n", "run");
     expect(toVerdict(result).verdict).toBe("time_limit_exceeded");

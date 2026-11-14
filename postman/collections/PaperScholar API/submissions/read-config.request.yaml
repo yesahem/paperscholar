@@ -1,0 +1,15 @@
+$kind: http-request
+name: Read whether runs need a confirmed email
+order: 2500
+method: GET
+url: "{{baseUrl}}/api/v1/config"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('reports email verification', () => {
+        pm.response.to.have.status(200);
+        const { features } = pm.response.json();
+        pm.expect(features.emailVerification).to.be.a('boolean');
+        pm.collectionVariables.set('verifiesEmail', String(features.emailVerification));
+      });

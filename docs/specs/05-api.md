@@ -208,6 +208,11 @@ Checks, in this order:
 
 Email verification is skipped on instances that have it switched off (spec 13 §4).
 
+> **Built in M4.** Code is measured in UTF-8 bytes, and whitespace-only code is empty;
+> both are `validation_error`. A `429 rate_limited` carries `{ retryAfterSeconds }`, a
+> `429 quota_exceeded` `{ resetsAt }` (the next midnight UTC), and both `Retry-After`.
+> Past the global ceiling the answer is `503 upstream_unavailable`.
+
 ### `GET /v1/submissions/:id`
 
 Owner only.
@@ -248,7 +253,8 @@ endpoint (spec 07 §3).
 ### `GET /v1/submissions?paperId=&problemId=&mode=&limit=&cursor=`
 
 The caller's own history, newest first. Items are `Submission` without `code`, `tests`,
-`violations` and `errorOutput`.
+`violations` and `errorOutput`. `problemId` requires `paperId`. The cursor encodes the
+last item's creation time and id.
 
 ## 7. Endpoints — progress, profile, social (milestone 5)
 
@@ -410,8 +416,12 @@ Specified in spec 10. Paths reserved here so naming stays consistent.
 | ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `GET /api/health`                  | None                                     | `{ ok: true, version }`. No database call.                                                        |
 | `POST /api/csp-report`             | None                                     | Content-Security-Policy violation reports from browsers (spec 11 §2). Logs a reduced form; `204`. |
-| `POST /api/internal/cron/cleanup`  | `Authorization: Bearer $INTERNAL_SECRET` | Daily: reap stuck submissions, apply retention (04 §8)                                            |
+| `POST /api/internal/cron/cleanup`  | `Authorization: Bearer $INTERNAL_SECRET` | Daily: reap stuck submissions, apply retention (04 §8). Also `GET`, which Vercel Cron sends.      |
 | `POST /api/internal/pipeline/tick` | `Authorization: Bearer $INTERNAL_SECRET` | Runs pipeline tasks (09 §13). Serverless mode only; self-hosted instances use the worker process. |
+
+> **Built in M4.** Without `INTERNAL_SECRET` the internal endpoints answer 404. On Vercel,
+> `CRON_SECRET` is set to the same value so Vercel Cron sends it; self-hosted instances
+> run the same cleanup from the `worker` process instead.
 
 There is no OpenAPI or docs endpoint in production. A generated OpenAPI document MAY be
 served in local development.

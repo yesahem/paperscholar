@@ -1,7 +1,7 @@
 import { closeDb, createDb } from "@repo/db";
 import { createAuth } from "../auth/auth";
 import type { AppConfig } from "../env";
-import { createLogger } from "../lib/logger";
+import { createLogger } from "@repo/shared/logger";
 import { createAccounts, type Accounts } from "../services/accounts";
 import { createRateLimiter } from "../services/rate-limiter";
 

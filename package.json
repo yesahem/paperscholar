@@ -17,6 +17,8 @@
     "content:status": "bun run --filter backend content:status",
     "api:contract": "postman collection run \"postman/collections/PaperScholar API\" -e postman/environments/local.environment.yaml",
     "runner:setup": "bun run --filter @repo/runner runner:setup",
+    "runner:images": "bun run --cwd packages/runner runner:images",
+    "runner:adversarial": "bun run --cwd packages/runner runner:adversarial",
     "admin:grant": "bun run --cwd apps/backend admin:grant",
     "admin:password": "bun run --cwd apps/backend admin:password",
     "auth:schema": "bun run --filter backend auth:schema"

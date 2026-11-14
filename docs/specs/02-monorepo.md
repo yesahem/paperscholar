@@ -30,7 +30,8 @@ packages/
   typescript-config/       keep; add a `bun.json` preset
 content/                   the shared library of papers, tracks, quizzes (new)
 postman/                   API collection and environments (new, from M2)
-docker/                    Dockerfiles (new)
+apps/*/Dockerfile          one image per app, built from the repository root (new, M4)
+deploy/Caddyfile           the self-hosted stack's public proxy (new, M4)
 docker-compose.yml         self-hosting stack (new)
 docker-compose.dev.yml     Postgres and storage for development (new)
 docs/                      how-it-works.md, specs/, user guides
@@ -242,11 +243,11 @@ Each becomes required at the milestone that first uses it. M0 requires only `WEB
 | `ANTHROPIC_API_KEY`, `LLM_MODEL`                                          | Paper pipeline, cold mail, mock interview |
 | `EMAIL_DRIVER` (`resend`, `smtp` or `log`), its credentials, `EMAIL_FROM` | Verification and reset emails             |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                | Google sign-in                            |
-| `RUNNER_URL`, `RUNNER_SECRET`                                             | The bundled runner (`http` provider)      |
+| `RUNNER_PROVIDER`, `RUNNER_URL`, `RUNNER_TOKEN`                           | Where code runs; the bundled runner       |
 | `RUNNER_IMAGE_NUMPY`, `RUNNER_IMAGE_TORCH`, vendor credentials            | A managed sandbox vendor                  |
 | `ADMIN_EMAILS`                                                            | Addresses made `admin` at sign-up         |
 | `REQUIRE_EMAIL_VERIFICATION`, `ALLOW_SIGNUPS`, `FEATURE_*`                | Explicit switches                         |
-| `LIMIT_*`, `PIPELINE_*`                                                   | Overrides for limits (11 §3, 09 §18)      |
+| `RUNS_PER_*`, `GLOBAL_RUNS_PER_DAY`, `MUTATIONS_PER_MINUTE`, `PIPELINE_*` | Overrides for limits (11 §3, 09 §18)      |
 
 ### `apps/web`
 

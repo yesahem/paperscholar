@@ -128,6 +128,8 @@ create unique index submissions_one_in_flight
   on submissions (user_id) where status in ('queued','running');
 create index submissions_in_flight_age
   on submissions (created_at) where status in ('queued','running');
+create index submissions_run_mode_age      -- added in M4, for the 30-day retention of runs
+  on submissions (created_at) where mode = 'run';
 
 create table progress (
   user_id             text not null references "user"(id) on delete cascade,

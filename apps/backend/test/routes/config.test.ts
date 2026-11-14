@@ -12,7 +12,10 @@ const ACCOUNT_FEATURES = new Set<string>([
 
 describe("GET /api/v1/config", () => {
   test("describes the instance: features, limits and version", async () => {
-    const { app } = createTestApp({ version: "v-test", limits: { runsPerDay: 42 } });
+    const { app } = createTestApp({
+      version: "v-test",
+      limits: { ...testConfig().limits, runsPerDay: 42 },
+    });
     const res = await app.request("/api/v1/config");
 
     expect(res.status).toBe(200);

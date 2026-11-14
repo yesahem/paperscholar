@@ -13,6 +13,8 @@ import { instanceConfigSchema, meSchema } from "@/lib/auth/schemas";
 export const queryKeys = {
   config: ["config"] as const,
   me: ["me"] as const,
+  problemSubmissions: (paperId: string, problemId: string) =>
+    ["submissions", paperId, problemId] as const,
 };
 
 /** What this instance offers (`GET /v1/config`). Fetched once per visit. */

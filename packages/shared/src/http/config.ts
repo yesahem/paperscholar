@@ -18,8 +18,7 @@ export const FEATURES = [
 export const featureSchema = z.enum(FEATURES);
 export type Feature = z.infer<typeof featureSchema>;
 
-/** Largest submission accepted, in bytes of UTF-8 (docs/specs/05-api.md §6). */
-export const MAX_CODE_BYTES = 64 * 1024;
+export { MAX_CODE_BYTES } from "../submissions";
 
 /** `GET /v1/config`. Contract: docs/specs/05-api.md §8. */
 export const instanceConfigSchema = z.object({

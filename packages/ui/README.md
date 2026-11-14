@@ -23,23 +23,26 @@ import { Input } from "@repo/ui/components/input";
 
 ## Components
 
-| Import                     | Use for                                                                                                        |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `components/button`        | Every clickable action. `buttonVariants()` styles links as buttons. `loading` shows a spinner and disables it. |
-| `components/field`         | Label, help text and error around one control. Wires `id`, `aria-describedby`, `aria-invalid`, `required`.     |
-| `components/input`         | Single-line text.                                                                                              |
-| `components/textarea`      | Multi-line text.                                                                                               |
-| `components/file-upload`   | Choosing files by drag-and-drop or browsing, with type, size and count checks.                                 |
-| `components/label`         | A standalone label. Inside a `Field`, use the Field's `label` instead.                                         |
-| `components/card`          | Grouped content: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`.            |
-| `components/badge`         | Short status or category labels.                                                                               |
-| `components/alert`         | Inline info, success, warning or error messages.                                                               |
-| `components/spinner`       | Indeterminate loading.                                                                                         |
-| `components/skeleton`      | Placeholder while content loads.                                                                               |
-| `components/separator`     | A dividing line.                                                                                               |
-| `components/dialog`        | A modal on the native `<dialog>`: focus is trapped and restored, Escape and the backdrop close it.             |
-| `components/tabs`          | `Tabs`, `TabList`, `Tab`, `TabPanel`: the WAI-ARIA tabs pattern with a roving tab index.                       |
-| `components/dropdown-menu` | `DropdownMenu`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`: a menu button (WAI-ARIA).    |
+| Import                        | Use for                                                                                                        |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `components/button`           | Every clickable action. `buttonVariants()` styles links as buttons. `loading` shows a spinner and disables it. |
+| `components/field`            | Label, help text and error around one control. Wires `id`, `aria-describedby`, `aria-invalid`, `required`.     |
+| `components/input`            | Single-line text.                                                                                              |
+| `components/textarea`         | Multi-line text.                                                                                               |
+| `components/file-upload`      | Choosing files by drag-and-drop or browsing, with type, size and count checks.                                 |
+| `components/label`            | A standalone label. Inside a `Field`, use the Field's `label` instead.                                         |
+| `components/card`             | Grouped content: `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`.            |
+| `components/badge`            | Short status or category labels.                                                                               |
+| `components/alert`            | Inline info, success, warning or error messages.                                                               |
+| `components/spinner`          | Indeterminate loading.                                                                                         |
+| `components/skeleton`         | Placeholder while content loads.                                                                               |
+| `components/separator`        | A dividing line.                                                                                               |
+| `components/toast`            | Brief, non-blocking messages: `ToastProvider` once, then `useToast()`. Announced politely; errors as alerts.   |
+| `components/resizable-panels` | Two panes with a keyboard- and pointer-operable divider; stacked below 900 px.                                 |
+| `components/meter`            | A bar for a known quantity, such as tests passed. Show the number in text too.                                 |
+| `components/dialog`           | A modal on the native `<dialog>`: focus is trapped and restored, Escape and the backdrop close it.             |
+| `components/tabs`             | `Tabs`, `TabList`, `Tab`, `TabPanel`: the WAI-ARIA tabs pattern with a roving tab index.                       |
+| `components/dropdown-menu`    | `DropdownMenu`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`: a menu button (WAI-ARIA).    |
 
 | Import                | Provides                                                  |
 | --------------------- | --------------------------------------------------------- |

@@ -21,6 +21,15 @@ variables:
   - key: email
     value: ""
     description: Set by "Sign up" to a fresh address at example.com.
+  - key: starter
+    value: ""
+    description: Set by "Get problem" to that problem's starter code.
+  - key: submissionId
+    value: ""
+    description: Set by "Create a run" to the queued submission.
+  - key: verifiesEmail
+    value: ""
+    description: Set by "Create a run" from GET /v1/config.
 scripts:
   - type: http:afterResponse
     language: text/javascript

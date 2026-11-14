@@ -1,0 +1,43 @@
+$kind: http-request
+name: Create a run
+order: 3000
+method: POST
+url: "{{baseUrl}}/api/v1/submissions"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    {
+      "paperId": "{{paperId}}",
+      "problemId": "{{problemId}}",
+      "code": {{starterJson}},
+      "mode": "run"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.variables.set('starterJson', JSON.stringify(pm.collectionVariables.get('starter')));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.collectionVariables.get('verifiesEmail') === 'true') {
+        pm.test('an unconfirmed email cannot run code here', () => {
+          pm.response.to.have.status(403);
+          pm.expect(pm.response.json().error.code).to.eql('email_not_verified');
+        });
+        pm.execution.setNextRequest('Delete me after runs');
+      } else {
+        pm.test('is accepted and queued', () => {
+          pm.response.to.have.status(202);
+          const body = pm.response.json();
+          pm.expect(body).to.have.all.keys('id', 'status');
+          pm.expect(body.status).to.eql('queued');
+          pm.collectionVariables.set('submissionId', body.id);
+        });
+        pm.variables.set('polls', 0);
+      }

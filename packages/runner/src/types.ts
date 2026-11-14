@@ -2,8 +2,7 @@ import { runEnvironmentSchema } from "@repo/shared";
 import { z } from "zod";
 
 /** Run only public tests, or public and hidden tests (docs/specs/07-runner.md §3). */
-export const submissionModeSchema = z.enum(["run", "submit"]);
-export type SubmissionMode = z.infer<typeof submissionModeSchema>;
+export { submissionModeSchema, type SubmissionMode } from "@repo/shared";
 
 export interface RunFile {
   /** Path relative to the sandbox working directory, e.g. `tests/test_public.py`. */
@@ -36,6 +35,76 @@ export interface RunRequest {
   /** solution.py, tests, optional helpers.py. The harness files are added by the provider. */
   files: RunFile[];
   spec: HarnessSpec;
+}
+
+/** Paths a request may write: a module or a test module, nothing else (docs/specs/07-runner.md §4). */
+export const RUN_FILE_PATH = /^(tests\/)?[a-z0-9_]+\.py$/;
+
+/** Paths the provider owns. A request may not overwrite them. */
+export const RESERVED_PATHS: ReadonlySet<string> = new Set([
+  "harness.py",
+  "conftest.py",
+  "spec.json",
+  "result.json",
+  "events.jsonl",
+  "pytest.log",
+]);
+
+/** Largest file a request may carry, and how many: far above any problem's needs. */
+export const MAX_RUN_FILE_BYTES = 1024 * 1024;
+export const MAX_RUN_FILES = 16;
+
+/** Run ids name containers and directories, so they are restricted to safe characters. */
+export const RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
+
+const harnessSpecSchema = z.strictObject({
+  action: z.enum(["test", "inspect"]),
+  entryPoint: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+  allowedPackages: z.array(z.string().max(100)).max(50),
+  prohibitedImports: z.array(z.string().max(100)).max(50),
+  hasHelpers: z.boolean(),
+  perTestTimeoutSeconds: z.number().int().min(1).max(60),
+  memoryLimitMb: z.number().int().min(16).max(8192),
+  wallClockLimitSeconds: z.number().int().min(1).max(60),
+  applyMemoryLimit: z.boolean(),
+  applyProcessLimit: z.boolean(),
+  inspectFiles: z.array(z.string().regex(RUN_FILE_PATH)).max(MAX_RUN_FILES),
+}) satisfies z.ZodType<HarnessSpec>;
+
+/**
+ * A `RunRequest` received over the network, by the bundled runner service.
+ * Paths are checked here so no provider can be made to write outside its
+ * working directory or over the harness.
+ */
+export const runRequestSchema = z.strictObject({
+  runId: z.string().regex(RUN_ID_PATTERN, "must be letters, digits, '.', '_' or '-'"),
+  environment: runEnvironmentSchema,
+  files: z
+    .array(
+      z.strictObject({
+        path: z
+          .string()
+          .regex(RUN_FILE_PATH, "must be a Python module, optionally under tests/")
+          .refine((path) => !RESERVED_PATHS.has(path), "is reserved for the harness"),
+        content: z.string().max(MAX_RUN_FILE_BYTES),
+      }),
+    )
+    .min(1)
+    .max(MAX_RUN_FILES)
+    .refine(
+      (files) => new Set(files.map((file) => file.path)).size === files.length,
+      "must not repeat a path",
+    ),
+  spec: harnessSpecSchema,
+}) satisfies z.ZodType<RunRequest>;
+
+/** Throws unless every file path is one a request may write. */
+export function assertRunFiles(files: readonly RunFile[]): void {
+  for (const file of files) {
+    if (!RUN_FILE_PATH.test(file.path) || RESERVED_PATHS.has(file.path)) {
+      throw new Error(`Invalid run file path ${JSON.stringify(file.path)}`);
+    }
+  }
 }
 
 export const testResultSchema = z.object({

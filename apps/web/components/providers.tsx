@@ -1,10 +1,11 @@
 "use client";
 
+import { ToastProvider } from "@repo/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { AuthDialogProvider } from "@/components/auth/auth-dialog";
 
-/** Browser-side state for every page: the query cache and the sign-in modal. */
+/** Browser-side state for every page: the query cache, toasts and the sign-in modal. */
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
     () =>
@@ -14,7 +15,9 @@ export function Providers({ children }: { children: ReactNode }) {
   );
   return (
     <QueryClientProvider client={client}>
-      <AuthDialogProvider>{children}</AuthDialogProvider>
+      <ToastProvider>
+        <AuthDialogProvider>{children}</AuthDialogProvider>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

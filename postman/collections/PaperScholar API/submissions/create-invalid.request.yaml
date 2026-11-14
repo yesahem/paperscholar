@@ -1,0 +1,24 @@
+$kind: http-request
+name: Create a run with empty code
+order: 6000
+method: POST
+url: "{{baseUrl}}/api/v1/submissions"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "paperId": "{{paperId}}", "problemId": "{{problemId}}", "code": "  ", "mode": "run" }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is a validation error naming code', () => {
+        pm.response.to.have.status(400);
+        const { error } = pm.response.json();
+        pm.expect(error.code).to.eql('validation_error');
+        pm.expect(error.details.issues.map((issue) => issue.path)).to.include('code');
+      });

@@ -3,19 +3,18 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { HARNESS_FILES, RESERVED_PATHS } from "../harness-files";
+import { HARNESS_FILES } from "../harness-files";
 import {
-  runResultSchema,
-  type RunFile,
+  assertRunFiles,
   type RunRequest,
   type RunResult,
   type SandboxProvider,
 } from "../types";
+import { harnessError, parseHarnessResult } from "./result";
 
 /** Extra time the provider allows beyond the harness's own wall clock before killing it. */
 const KILL_GRACE_SECONDS = 15;
 const MAX_STDERR_CHARS = 2000;
-const RUN_FILE_PATH = /^(tests\/)?[a-z0-9_]+\.py$/;
 
 /** The interpreter created by `bun run runner:setup`, if it exists. */
 export function defaultLocalPythonPath(): string {
@@ -28,22 +27,6 @@ export interface LocalProviderOptions {
   pythonPath: string;
   /** The process's NODE_ENV. The provider refuses to exist in production. */
   nodeEnv: string | undefined;
-}
-
-function harnessError(message: string, durationMs = 0): RunResult {
-  return {
-    outcome: "harness_error",
-    tests: [],
-    violations: [],
-    errorOutput: message,
-    durationMs,
-  };
-}
-
-function assertRunFile(file: RunFile): void {
-  if (!RUN_FILE_PATH.test(file.path) || RESERVED_PATHS.has(file.path)) {
-    throw new Error(`Invalid run file path ${JSON.stringify(file.path)}`);
-  }
 }
 
 /**
@@ -65,7 +48,7 @@ export class LocalProvider implements SandboxProvider {
   }
 
   async run(request: RunRequest, signal?: AbortSignal): Promise<RunResult> {
-    request.files.forEach(assertRunFile);
+    assertRunFiles(request.files);
     const started = performance.now();
     const directory = await mkdtemp(join(tmpdir(), `runner-${request.runId}-`));
 
@@ -114,19 +97,7 @@ export class LocalProvider implements SandboxProvider {
         );
       }
 
-      let raw: unknown;
-      try {
-        raw = await resultFile.json();
-      } catch {
-        return harnessError(
-          "The harness wrote a result that is not valid JSON.",
-          elapsed,
-        );
-      }
-      const parsed = runResultSchema.safeParse(raw);
-      return parsed.success
-        ? parsed.data
-        : harnessError("The harness wrote a result in an unexpected shape.", elapsed);
+      return parseHarnessResult(await resultFile.text(), elapsed);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

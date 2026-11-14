@@ -1,16 +1,18 @@
 import type { ContentStore } from "@repo/content";
 import type { Database } from "@repo/db";
+import type { SandboxProvider } from "@repo/runner";
 import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import type { EmailSender } from "./adapters/email/types";
 import { createAuth } from "./auth/auth";
-import type { AppConfig } from "./env";
-import type { Logger } from "./lib/logger";
+import { verifiesEmail, type AppConfig } from "./env";
+import type { Logger } from "@repo/shared/logger";
 import { limitBody } from "./middleware/body-limit";
 import { defaultCacheControl } from "./middleware/cache-control";
 import { createErrorHandler, notFoundHandler } from "./middleware/error-handler";
 import { requireRole } from "./middleware/guards";
+import { mutationLimit } from "./middleware/mutation-limit";
 import { originCheck } from "./middleware/origin-check";
 import { requestContext } from "./middleware/request-context";
 import { requestLogger } from "./middleware/request-logger";
@@ -19,13 +21,17 @@ import { authRoutes } from "./routes/auth";
 import { configRoutes } from "./routes/config";
 import { cspReportRoutes } from "./routes/csp-reports";
 import { healthRoutes } from "./routes/health";
+import { internalRoutes } from "./routes/internal";
 import { meRoutes } from "./routes/me";
 import { papersRoutes } from "./routes/papers";
+import { submissionsRoutes } from "./routes/submissions";
 import { tracksRoutes } from "./routes/tracks";
 import { createAccounts } from "./services/accounts";
+import { runCleanup } from "./services/cleanup";
 import { createContentCatalog } from "./services/content-catalog";
 import { instanceConfig } from "./services/instance-config";
 import { createRateLimiter } from "./services/rate-limiter";
+import { createSubmissions, type Submissions } from "./services/submissions";
 import type { AppEnv } from "./types";
 
 export interface AppDependencies {
@@ -37,6 +43,8 @@ export interface AppDependencies {
   db: Database;
   /** Null when this instance sends no email. */
   email: EmailSender | null;
+  /** Where learners' code runs (`createSandboxProvider`). */
+  sandbox: SandboxProvider;
   /**
    * Keeps work going after the response is sent. Serverless hosts must keep
    * the function alive for it (`waitUntil`); a long-running server need not.
@@ -54,6 +62,7 @@ export function createApp({
   content,
   db,
   email,
+  sandbox,
   runInBackground,
 }: AppDependencies) {
   const app = new Hono<AppEnv>();
@@ -75,20 +84,42 @@ export function createApp({
   const limiter = createRateLimiter(db);
   const auth = createAuth({ config, db, email, limiter, logger, runInBackground });
   const accounts = createAccounts({ db, auth });
+  // Inline dispatch (docs/specs/07-runner.md §3): the run continues after the
+  // 202, kept alive by the host's waitUntil on serverless.
+  const submissions: Submissions = createSubmissions({
+    db,
+    content,
+    provider: sandbox,
+    limiter,
+    limits: config.limits,
+    logger,
+    dispatch: (id) => runInBackground(submissions.execute(id)),
+  });
 
   const v1 = new Hono<AppEnv>()
-    .use(originCheck(config.webOrigin), session(auth))
+    .use(
+      originCheck(config.webOrigin),
+      session(auth),
+      mutationLimit(limiter, config.limits.mutationsPerMinute),
+    )
     // Maintainer and admin routes (M6) are invisible to everyone else.
     .use("/admin/*", requireRole("maintainer", accounts.currentRole))
     .route("/papers", papersRoutes(catalog))
     .route("/tracks", tracksRoutes(catalog))
     .route("/config", configRoutes(instanceConfig(config)))
-    .route("/me", meRoutes(accounts, auth));
+    .route("/me", meRoutes(accounts, auth))
+    .route("/submissions", submissionsRoutes(submissions, verifiesEmail(config)));
 
   const api = new Hono<AppEnv>()
     .route("/health", healthRoutes({ version: config.version }))
     .route("/csp-report", cspReportRoutes())
     .route("/auth", authRoutes(auth, config.webOrigin))
+    .route(
+      "/internal",
+      internalRoutes(config.internalSecret, () =>
+        runCleanup({ db, submissions, logger }),
+      ),
+    )
     .route("/v1", v1);
 
   app.route("/api", api);

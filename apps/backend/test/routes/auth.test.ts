@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { linkIn, TestBrowser, WEB_ORIGIN } from "../auth-client";
 import { DATABASE_URL, useTestDatabase } from "../database";
 import { createAuth } from "../../src/auth/auth";
-import { silentLogger } from "../../src/lib/logger";
+import { silentLogger } from "@repo/shared/logger";
 import { createRateLimiter } from "../../src/services/rate-limiter";
 import { createTestApp, memoryEmailSender, testConfig } from "../helpers";
 

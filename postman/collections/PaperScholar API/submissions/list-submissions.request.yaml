@@ -1,0 +1,17 @@
+$kind: http-request
+name: List runs for the problem
+order: 5000
+method: GET
+url: "{{baseUrl}}/api/v1/submissions?paperId={{paperId}}&problemId={{problemId}}&limit=5"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists the run, newest first, without its code or results', () => {
+        pm.response.to.have.status(200);
+        const body = pm.response.json();
+        pm.expect(body).to.have.all.keys('items', 'nextCursor');
+        pm.expect(body.items[0].id).to.eql(pm.collectionVariables.get('submissionId'));
+        pm.expect(body.items[0]).to.not.have.any.keys('code', 'tests', 'violations', 'errorOutput');
+        pm.expect(body.nextCursor).to.eql(null);
+      });

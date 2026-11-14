@@ -134,7 +134,10 @@ The most important screen. Desktop layout:
 Below 900 px wide, the panes stack: instructions first, the editor below them.
 
 > **M2 status.** The panes are a fixed 50/50 split; the resizable divider (and
-> `ResizablePanels` in `packages/ui`) arrives with the Results tab in M4. Stacking replaces
+> `ResizablePanels` in `packages/ui`) arrives with the Results tab in M4.
+>
+> **M4 status.** `ResizablePanels` is the window-splitter pattern (arrow keys, Home and
+> End, pointer drag, 25–75 %), and stacks below 900 px. Stacking replaces
 > "the editor becomes a tab", which hid the description while typing on small screens.
 
 ### 5.1 Left pane
@@ -188,6 +191,15 @@ idle ──click──▶ creating ──202──▶ polling ──completed/er
 - The Results tab is selected automatically on click and shows "Queued…" then "Running
   tests…".
 - Polling follows spec 07 §3.
+
+> **Built in M4.** Signed-out visitors get the sign-in modal without a request. The first
+> poll is one second after the `202`, so a fast run shows its verdict after about a
+> second (measured p95 1.05 s on the bundled runner). A poll that fails on the network
+> is retried; any `4xx` ends the run with its message. `429`s use the new `Toast` in
+> `packages/ui`. The Submissions tab pages through `GET /v1/submissions` and restores
+> code with `GET /v1/submissions/:id`; it is hidden behind a notice for an unconfirmed
+> email, which cannot read history. The solved mark after a passed submit arrives with
+> progress in M5.
 
 Handling of error responses:
 

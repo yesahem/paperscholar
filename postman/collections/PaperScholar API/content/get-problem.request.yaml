@@ -22,4 +22,6 @@ scripts:
         pm.expect(['numpy', 'torch']).to.include(problem.environment);
         pm.expect(problem.timeLimitSeconds).to.be.above(0);
         pm.expect(problem.memoryLimitMb).to.be.above(0);
+        // The submissions folder runs this starter, which should fail its tests.
+        pm.collectionVariables.set('starter', problem.starter);
       });

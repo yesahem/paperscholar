@@ -69,6 +69,11 @@ interface JobDispatcher {
 
 The submissions function is configured with `maxDuration` of 120 seconds.
 
+> **Built in M4.** The inline dispatcher is `runInBackground(submissions.execute(id))`,
+> which is `waitUntil` on Vercel and a plain detached promise under `Bun.serve`. The
+> backend deploys as one function (`apps/backend/src/index.ts`), so `vercel.json` sets
+> `maxDuration` 120 on it as a whole. The run is aborted after 90 s (`RUN_ABORT_MS`).
+
 ### Execute
 
 1. Claim: `update submissions set status='running', started_at=now() where id=$1 and
@@ -223,6 +228,11 @@ on Linux under a dedicated sandbox user, a process-count limit.
   nothing is parsed from pytest's console output;
 - derives `group` from the test file name.
 
+> **Changed in M4.** Each test's printed output is captured in memory by `conftest.py`
+> (`CappedOutput`, the first 4 KB kept and the rest counted and dropped), not by pytest's
+> capture file. The file hit the 16 MB written-file limit, so printing 100 MB failed
+> correct code with "File too large" (spec §10 expects it to complete).
+
 **4. Write `result.json`** matching `RunResult`. A `MemoryError` in any test, or a child
 killed by the kernel, yields `out_of_memory`; exceeding the wall clock yields `timeout`; a
 test file that fails to load yields `harness_error`.
@@ -286,11 +296,25 @@ without a sandbox account.
 Per run: create a sandbox from the prebuilt image for the requested environment, write
 the files, run the harness, read `result.json`, and stop the sandbox in a `finally` block.
 
+> **Built in M4, not yet run against Vercel.** `@vercel/sandbox` 3.9.1. Each sandbox is
+> created with `networkPolicy: "deny-all"`, `persistent: false`, no environment
+> variables, a vendor timeout of 75 s and one vCPU per 2 GB of memory needed. The images
+> are the same `packages/runner/images/Dockerfile` the bundled runner uses, built for
+> `linux/amd64` and pushed to the Vercel Container Registry (`bun run runner:images
+--platform linux/amd64 --tag-prefix <registry>/ --push`). Authentication is the
+> deployment's OIDC token, or `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID` and `VERCEL_TOKEN`.
+> E2B is not built.
+
 ### `HttpRunnerProvider` — self-hosted
 
 Sends the `RunRequest` to the bundled runner service (`apps/runner`), which starts one
 hardened Docker container per run and returns the `RunResult`. The service, its container
 settings and its isolation levels are specified in spec 13 §5.
+
+> **Built in M4.** `POST /v1/runs` with `Authorization: Bearer $RUNNER_TOKEN`; the body is
+> validated with `runRequestSchema` (paths, run id, limits). The service drives the
+> `docker` command, and the run's files reach the container on standard input, because
+> its root filesystem is read-only and its working directory an empty tmpfs.
 
 ### Requirements on a provider serving the public
 
@@ -325,20 +349,27 @@ CI and production agree on versions. Rebuilding an image is a deliberate change:
 
 ## 9. Limits and cost control
 
-| Limit                    | Value                                | Enforced by                                                    |
-| ------------------------ | ------------------------------------ | -------------------------------------------------------------- |
-| Code size                | 64 KB                                | API validation                                                 |
-| Per-test time            | Problem's `time_limit_seconds`       | `conftest.py`                                                  |
-| Whole-run wall clock     | 60 s                                 | Harness, then provider timeout at 75 s, then API abort at 90 s |
-| Memory                   | Problem's `memory_limit_mb`          | `RLIMIT_AS` and the sandbox's own size                         |
-| Result size              | 256 KB                               | Harness                                                        |
-| Concurrent runs per user | 1                                    | Unique index                                                   |
-| Runs per user per minute | 10                                   | Rate limiter                                                   |
-| Runs per user per day    | 200, the same for everyone           | Limit check                                                    |
-| Global runs per day      | Configurable ceiling, default 20 000 | Counter; over it, `503 upstream_unavailable`                   |
+| Limit                    | Value                                 | Enforced by                                                    |
+| ------------------------ | ------------------------------------- | -------------------------------------------------------------- |
+| Code size                | 64 KB                                 | API validation                                                 |
+| Per-test time            | Problem's `time_limit_seconds`        | `conftest.py`                                                  |
+| Whole-run wall clock     | 60 s                                  | Harness, then provider timeout at 75 s, then API abort at 90 s |
+| Memory                   | Problem's `memory_limit_mb`           | `RLIMIT_AS` and the sandbox's own size                         |
+| Result size              | 256 KB                                | Harness                                                        |
+| Concurrent runs per user | 1                                     | Unique index                                                   |
+| Runs per user per minute | 10                                    | Rate limiter                                                   |
+| Runs per user per day    | 100 by default, the same for everyone | Limit check                                                    |
+| Global runs per day      | Configurable ceiling, default 20 000  | Counter; over it, `503 upstream_unavailable`                   |
 
-Every value is an instance setting (`LIMIT_*`). Pipeline verification runs are counted
-against the ingestion, not against a user's daily limit.
+Every value is an instance setting: `RUNS_PER_DAY`, `RUNS_PER_MINUTE` and
+`GLOBAL_RUNS_PER_DAY`.
+
+> **Changed in M4.** The daily default is 100, as `/v1/config` already published since
+> M2; this table said 200. The variables keep M2's `RUNS_PER_DAY` naming instead of
+> `LIMIT_*`. The daily count is of the user's submissions created since midnight UTC
+> that did not end in `internal_error`; the global counter is incremented in the same
+> transaction as the insert, so a refused run is never counted. Pipeline verification runs are counted
+> against the ingestion, not against a user's daily limit.
 
 The global ceiling is a spending circuit-breaker. When it trips, an alert is sent
 (spec 11 §5).
@@ -362,6 +393,13 @@ schedule and before changing vendor or image:
 | Fork bomb                                                              | Contained; verdict is not `passed`; next run unaffected |
 | Writes a file, then a second run looks for it                          | File absent                                             |
 | Reads environment variables                                            | None of ours present                                    |
+
+> **Built in M4.** `bun run runner:adversarial --provider http|vercel` runs these cases
+> (`packages/runner/src/adversarial.ts`); the local provider is refused. The network,
+> fork-bomb, file and environment cases put their attempt in the test file, which is not
+> import-scanned. `.github/workflows/runner-adversarial.yml` runs it nightly and on runner
+> changes against the bundled runner, and against Vercel Sandbox once its credentials
+> are configured. Measured on the bundled runner: 12 of 12 as expected, in 71 s.
 
 ## 11. Out of scope
 

@@ -1,6 +1,6 @@
 import type { RequestIdVariables } from "hono/request-id";
 import type { AuthSession, AuthUser } from "./auth/auth";
-import type { Logger } from "./lib/logger";
+import type { Logger } from "@repo/shared/logger";
 
 /** Hono environment shared by every route and middleware. */
 export interface AppEnv {

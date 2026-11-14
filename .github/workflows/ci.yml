@@ -106,8 +106,12 @@ jobs:
       - name: Publish the content library to local storage
         run: bun run content:sync
 
+      # Runs submissions with the local provider and the Python environment set
+      # up above. Email verification is off so the contract covers a full run.
       - name: Start the backend
         working-directory: apps/backend
+        env:
+          REQUIRE_EMAIL_VERIFICATION: "false"
         run: |
           nohup bun src/main.ts > "$RUNNER_TEMP/backend.log" 2>&1 &
           for attempt in $(seq 1 30); do

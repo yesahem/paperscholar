@@ -1,0 +1,43 @@
+$kind: http-request
+name: Sign up to run code
+order: 2000
+method: POST
+url: "{{baseUrl}}/api/auth/sign-up/email"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{email}}",
+      "username": "{{username}}",
+      "name": "{{username}}",
+      "password": "postman contract password"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const username = `pm_${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
+      pm.collectionVariables.set('username', username);
+      pm.collectionVariables.set('email', `${username}@example.com`);
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('creates the account and signs in', () => {
+        pm.response.to.have.status(200);
+      });
+      pm.test('sets an HttpOnly, SameSite=Lax, host-only session cookie', () => {
+        const cookies = pm.response.headers
+          .all()
+          .filter((header) => header.key.toLowerCase() === 'set-cookie')
+          .map((header) => header.value);
+        const session = cookies.find((cookie) => cookie.includes('session_token='));
+        pm.expect(session, 'session cookie').to.be.a('string');
+        pm.expect(session).to.include('HttpOnly');
+        pm.expect(session.toLowerCase()).to.include('samesite=lax');
+        pm.expect(session.toLowerCase()).to.not.include('domain=');
+      });

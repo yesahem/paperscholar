@@ -59,11 +59,21 @@ removing `docs/` from `.gitignore` (README Q2).
 
 | Service    | Image                                      | Notes                                                                  |
 | ---------- | ------------------------------------------ | ---------------------------------------------------------------------- |
-| `web`      | Built from `apps/web`                      | The only service published to the outside                              |
+| `proxy`    | Official Caddy image                       | The only service published; sets the client address (added in M4)      |
+| `web`      | Built from `apps/web`                      | Reachable from `proxy`                                                 |
 | `backend`  | Built from `apps/backend`                  | Runs migrations and `content:sync` on start; mounts the storage volume |
 | `worker`   | Same image as `backend`, different command | Pipeline tasks and scheduled jobs; mounts the same storage volume      |
 | `runner`   | Built from `apps/runner`                   | Executes sandbox runs; reachable only from `backend` and `worker`      |
 | `postgres` | Official image                             | With a named volume                                                    |
+
+> **Built in M4.** `proxy` was added because `next start` neither sets nor overwrites
+> `X-Forwarded-For` (spec 11 §3); Caddy also gives HTTPS when `SITE_ADDRESS` is a domain.
+> Four networks keep each service to what it needs: `edge` (proxy, web), `app` (web,
+> backend), `data` (backend, worker, postgres) and `sandbox` (backend, worker, runner),
+> so `web` cannot resolve `runner` and nothing publishes the runner's port. Two
+> build-only services, `sandbox-numpy` and `sandbox-torch`, build and check the sandbox
+> images and exit; `runner` starts after both succeed. Images come from `apps/*/Dockerfile`
+> with the repository root as context.
 
 ## 4. Configuration levels
 
@@ -137,6 +147,15 @@ Each run's container is started with:
 The Python images are built from the same pinned requirement files as every other
 environment (spec 07 §8).
 
+> **Built in M4.** Exactly: `--network none`, `--read-only`, tmpfs `/work` and `/tmp` of
+> 64 MB each, `--memory` and `--memory-swap` of the problem's limit plus 1 GB,
+> `--cpus 1` (`RUNNER_CPUS`), `--pids-limit 128`, `--cap-drop ALL`,
+> `--security-opt no-new-privileges`, user `10001:10001`, `nofile` 256, no core dumps,
+> no log driver, no environment variables, `--rm`, and `docker kill` at the wall clock
+> plus 15 s. `RUNNER_DOCKER_RUNTIME=runsc` selects gVisor. At most
+> `RUNNER_MAX_CONCURRENT` (2) containers run at once and `RUNNER_MAX_QUEUE` (20) wait;
+> beyond that the service answers 503, which the API records as `internal_error`.
+
 **Isolation levels — be honest about them.**
 
 | Setting                                        | Isolation                                 | Suitable for                                                       |
@@ -157,6 +176,16 @@ docker compose up -d
 ```
 
 On start the `backend` container applies migrations, then loads the bundled papers.
+
+> **Built in M4.** The root `.env.example` needs `WEB_ORIGIN` (default
+> `http://localhost:8080`, the published port) and three secrets: `BETTER_AUTH_SECRET`,
+> `RUNNER_TOKEN` and `POSTGRES_PASSWORD`. Compose stops with a message naming any that is
+> missing. Email is off by default (`EMAIL_DRIVER=none`), so sign-up needs no
+> confirmation. Measured from a fresh copy of the repository with only Docker: about
+> six minutes to build and start (the base images already pulled); a new user signed
+> up, ran a NumPy problem (verdict after 1.1 s) and submitted a PyTorch one (2.0 s).
+> The catalogue prerendered at build time is empty until its first revalidation, about
+> 30 s after the first visit.
 
 **The first administrator.** `ADMIN_EMAILS` lists email addresses that are given the
 `admin` role when they sign up. It is read only at sign-up, so removing an address later
