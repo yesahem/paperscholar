@@ -22,12 +22,13 @@ export { PermanentTaskError, PipelineError, type PipelineErrorCode } from "./err
 export {
   countPdfPages,
   createIngestion,
+  findArxivIngestion,
   isPdf,
   parseArxivId,
   type IntakeInput,
   type IntakeResult,
 } from "./intake";
-export { ingestionKeys, ingestionPrefix, uploadKey } from "./keys";
+export { ingestionKeys, ingestionPrefix, uploadKey, uploadPrefix } from "./keys";
 export {
   createScriptedLlm,
   type RecordedCall,

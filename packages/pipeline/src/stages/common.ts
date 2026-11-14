@@ -11,7 +11,7 @@ import {
   ingestionOptionsSchema,
   outlineSchema,
   planSchema,
-  usageSchema,
+  ingestionUsageSchema,
   type IngestionOptions,
   type Outline,
   type Plan,
@@ -97,7 +97,7 @@ export async function callModel<Schema extends z.ZodType>(
     .select({ usage: schema.ingestions.usage })
     .from(schema.ingestions)
     .where(eq(schema.ingestions.id, task.ingestionId));
-  const spent = usageSchema.parse(row?.usage ?? {}).outputTokens;
+  const spent = ingestionUsageSchema.parse(row?.usage ?? {}).outputTokens;
   if (spent >= deps.settings.outputTokenBudget) {
     throw new PermanentTaskError(
       `the output-token budget of ${deps.settings.outputTokenBudget.toLocaleString("en")} is spent (${spent.toLocaleString("en")} used)`,

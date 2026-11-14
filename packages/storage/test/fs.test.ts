@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FsStorage } from "../src";
+import { FsStorage, type ObjectStorage } from "../src";
 import { describeStorageContract } from "./contract";
 
 const roots: string[] = [];
@@ -33,5 +33,25 @@ describe("fs driver", () => {
     await storage.put("run/nested/deep/file.json", "{}");
     const root = roots.at(-1) ?? "";
     expect(await Bun.file(join(root, "run/nested/deep/file.json")).text()).toBe("{}");
+  });
+});
+
+describe("fs presigned uploads", () => {
+  test("there are none: uploads go through the API", async () => {
+    const { storage }: { storage: ObjectStorage } = await freshStorage();
+    expect(
+      await storage.presignPut("uploads/a.pdf", {
+        contentType: "application/pdf",
+        contentLength: 10,
+        expiresInSeconds: 60,
+      }),
+    ).toBeNull();
+    expect(
+      storage.presignPut("../escape.pdf", {
+        contentType: "application/pdf",
+        contentLength: 10,
+        expiresInSeconds: 60,
+      }),
+    ).rejects.toThrow();
   });
 });

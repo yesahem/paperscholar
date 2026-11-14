@@ -67,6 +67,25 @@ export interface IntakeResult {
   created: boolean;
 }
 
+/** The live ingestion of an arXiv paper, if any: checked before downloading it again. */
+export async function findArxivIngestion(
+  db: Database,
+  arxivId: string,
+): Promise<{ id: string; status: IngestionStatus } | null> {
+  const [row] = await db
+    .select({ id: schema.ingestions.id, status: schema.ingestions.status })
+    .from(schema.ingestions)
+    .where(
+      and(
+        eq(schema.ingestions.sourceRef, arxivId),
+        sql`${schema.ingestions.status} not in ('failed', 'cancelled')`,
+      ),
+    )
+    .orderBy(desc(schema.ingestions.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
 async function findExisting(
   db: Database,
   sha256: string,

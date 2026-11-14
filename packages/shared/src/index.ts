@@ -202,3 +202,5 @@ export {
   type TaskKind,
   type TaskStatus,
 } from "./pipeline";
+export * from "./pipeline-schemas";
+export * from "./http/pipeline";

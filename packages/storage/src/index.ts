@@ -7,6 +7,8 @@ export type {
   ConditionalGetResult,
   ObjectInfo,
   ObjectStorage,
+  PresignedUpload,
+  PresignOptions,
   PutOptions,
   PutResult,
   StoredObject,

@@ -1,6 +1,6 @@
 import { asc, eq, schema, sql, type Database } from "@repo/db";
 import type { TaskKind, TaskStatus } from "@repo/shared";
-import { usageSchema, type IngestionUsage } from "./schemas";
+import { ingestionUsageSchema, type IngestionUsage } from "./schemas";
 
 export type IngestionRecord = typeof schema.ingestions.$inferSelect;
 export type IngestionStepRecord = typeof schema.ingestionSteps.$inferSelect;
@@ -46,7 +46,7 @@ export async function getIngestionState(
       .where(eq(schema.pipelineTasks.ingestionId, id))
       .orderBy(asc(schema.pipelineTasks.createdAt)),
   ]);
-  return { ingestion, usage: usageSchema.parse(ingestion.usage), steps, tasks };
+  return { ingestion, usage: ingestionUsageSchema.parse(ingestion.usage), steps, tasks };
 }
 
 /** Whether `id` names an ingestion; tolerant of strings that are not UUIDs. */

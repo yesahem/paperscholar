@@ -21,4 +21,7 @@ export const ingestionKeys = (ingestionId: string) => {
  * and per uploader, so nobody can guess or overwrite another's upload.
  */
 export const uploadKey = (userId: string, uploadId: string) =>
-  `uploads/papers/${userId}/${uploadId}.pdf`;
+  `${uploadPrefix(userId)}${uploadId}.pdf`;
+
+/** Every upload of one user starts with this. */
+export const uploadPrefix = (userId: string) => `uploads/papers/${userId}/`;

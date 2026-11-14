@@ -130,6 +130,9 @@ export function memoryAvatarStore(): AvatarStore & { objects: Map<string, Uint8A
       async head() {
         throw new Error("not used");
       },
+      async presignPut() {
+        throw new Error("not used");
+      },
       async put(key, body) {
         objects.set(
           key,

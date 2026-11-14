@@ -20,6 +20,7 @@ import { originCheck } from "./middleware/origin-check";
 import { requestContext } from "./middleware/request-context";
 import { requestLogger } from "./middleware/request-logger";
 import { session } from "./middleware/session";
+import { adminIngestionRoutes } from "./routes/admin/ingestions";
 import { authRoutes } from "./routes/auth";
 import { avatarRoutes } from "./routes/avatars";
 import { configRoutes } from "./routes/config";
@@ -37,6 +38,7 @@ import { createAccounts } from "./services/accounts";
 import { createAvatars } from "./services/avatars";
 import { runCleanup } from "./services/cleanup";
 import { createContentCatalog } from "./services/content-catalog";
+import { createIngestions, PDF_UPLOAD_PATH_PREFIX } from "./services/ingestions";
 import { instanceConfig } from "./services/instance-config";
 import { createLeaderboard } from "./services/leaderboard";
 import { createProfiles } from "./services/profiles";
@@ -90,8 +92,12 @@ export function createApp({
     requestLogger(),
     secureHeaders(),
     defaultCacheControl(),
-    // The avatar upload carries a 2 MB image and its multipart framing.
-    limitBody(undefined, { [AVATAR_UPLOAD_PATH]: AVATAR_MAX_BYTES + 64 * 1024 }),
+    // The avatar upload carries a 2 MB image and its multipart framing; a PDF
+    // upload through the API (fs storage) carries the paper.
+    limitBody(undefined, {
+      [AVATAR_UPLOAD_PATH]: AVATAR_MAX_BYTES + 64 * 1024,
+      [`${PDF_UPLOAD_PATH_PREFIX}*`]: config.pipeline.limits.maxPdfBytes,
+    }),
   );
 
   app.onError(createErrorHandler(logger));
@@ -117,6 +123,13 @@ export function createApp({
     dispatch: (id) => runInBackground(submissions.execute(id)),
   });
 
+  const ingestions = pipeline
+    ? createIngestions({
+        deps: pipeline.deps,
+        kick: (origin) => pipeline.runner.kick(origin),
+      })
+    : null;
+
   const v1 = new Hono<AppEnv>()
     .use(
       originCheck(config.webOrigin),
@@ -125,6 +138,7 @@ export function createApp({
     )
     // Maintainer and admin routes (M6) are invisible to everyone else.
     .use("/admin/*", requireRole("maintainer", accounts.currentRole))
+    .route("/admin/ingestions", adminIngestionRoutes(ingestions))
     .route("/papers", papersRoutes(catalog))
     .route("/tracks", tracksRoutes(catalog))
     .route("/config", configRoutes(instanceConfig(config)))

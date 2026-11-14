@@ -4,6 +4,7 @@ import {
   type ConditionalGetResult,
   type ObjectInfo,
   type ObjectStorage,
+  type PresignedUpload,
   type PutResult,
   type StoredObject,
 } from "@repo/storage";
@@ -30,6 +31,9 @@ class UnreachableStorage implements ObjectStorage {
     return Promise.resolve().then(() => this.fail());
   }
   delete(): Promise<void> {
+    return Promise.resolve().then(() => this.fail());
+  }
+  presignPut(): Promise<PresignedUpload | null> {
     return Promise.resolve().then(() => this.fail());
   }
   list(): AsyncIterable<ObjectInfo> {

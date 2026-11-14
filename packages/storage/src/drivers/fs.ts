@@ -8,6 +8,7 @@ import type {
   ConditionalGetResult,
   ObjectInfo,
   ObjectStorage,
+  PresignedUpload,
   PutOptions,
   PutResult,
   StoredObject,
@@ -133,6 +134,12 @@ export class FsStorage implements ObjectStorage {
       if (!info) throw new StorageError(`${key} vanished after writing`, { key });
       return { etag: info.etag };
     });
+  }
+
+  /** Files on this machine have no URL; uploads go through the API instead. */
+  async presignPut(key: string): Promise<PresignedUpload | null> {
+    assertValidKey(key);
+    return null;
   }
 
   async delete(key: string): Promise<void> {

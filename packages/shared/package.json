@@ -10,6 +10,7 @@
     "./errors": "./src/errors.ts",
     "./logger": "./src/logger.ts",
     "./pipeline": "./src/pipeline.ts",
+    "./pipeline-schemas": "./src/pipeline-schemas.ts",
     "./progress": "./src/progress.ts",
     "./site": "./src/site.ts",
     "./submissions": "./src/submissions.ts",

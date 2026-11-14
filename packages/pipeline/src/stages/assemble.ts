@@ -12,7 +12,7 @@ import { ingestionKeys } from "../keys";
 import { requireJson, writeJson } from "../objects";
 import {
   currentStepSchema,
-  usageSchema,
+  ingestionUsageSchema,
   type CurrentStep,
   type IngestionReport,
   type Outline,
@@ -185,7 +185,7 @@ export const assembleTask: TaskHandler = async (context) => {
     startedAt: row.createdAt.toISOString(),
     assembledAt: assembledAt.toISOString(),
     durationMs: assembledAt.getTime() - row.createdAt.getTime(),
-    usage: usageSchema.parse(row.usage),
+    usage: ingestionUsageSchema.parse(row.usage),
     omitted: plan.omitted,
     steps: steps.map((stepRow, index) => ({
       stepId: stepRow.stepId,
