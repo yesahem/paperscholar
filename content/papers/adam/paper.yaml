@@ -1,6 +1,0 @@
-title: "Adam: A Method for Stochastic Optimization"
-authors: [Diederik P. Kingma, Jimmy Ba]
-year: 2015
-url: https://arxiv.org/abs/1412.6980
-summary: An optimiser that adapts each parameter's step size from running estimates of the gradient's first and second moments.
-tags: [optimization, deep-learning]
