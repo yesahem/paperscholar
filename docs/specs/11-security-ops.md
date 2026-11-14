@@ -110,6 +110,11 @@ deployment that it survives the proxy hop. Never trust a client-supplied forward
 > reads is not: it would add a database write to every content request, which spec 05
 > §5 keeps free of the database. Deciding between the two is open.
 
+> **M5.** User search (30 per minute per address) and avatar uploads (10 per hour per
+> user) are built. `/api/auth/change-password` is under the sign-in limit (10 per 10
+> minutes per address), since a signed-in session could otherwise guess the current
+> password at Better Auth's default 100 per minute. `img-src` adds `AVATAR_ORIGIN` when set.
+
 ## 4. Input handling
 
 - Every body, query and path parameter is validated with zod; unknown fields are rejected.

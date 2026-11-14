@@ -42,7 +42,12 @@ describe.skipIf(!DATABASE_URL)("roles and passwords", () => {
       logger: silentLogger,
       runInBackground: () => {},
     });
-    return createAccounts({ db: database.db, auth });
+    return createAccounts({
+      db: database.db,
+      auth,
+      avatars: { url: (key) => `/avatars/${key}`, delete: async () => {} },
+      logger: silentLogger,
+    });
   }
 
   async function newUser(app = createTestApp({}, undefined, { db: database.db }).app) {

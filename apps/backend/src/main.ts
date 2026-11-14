@@ -3,6 +3,7 @@
  * Serverless hosts use src/index.ts instead.
  */
 import { closeDb, createDb } from "@repo/db";
+import { createAvatarStore } from "./adapters/avatar-store";
 import { createContentReader } from "./adapters/content";
 import { createEmailSender } from "./adapters/email/create-email-sender";
 import { createSandboxProvider } from "./adapters/sandbox";
@@ -20,6 +21,7 @@ const app = createApp({
   db,
   email: createEmailSender(config.email),
   sandbox: createSandboxProvider(config, logger),
+  avatarStore: createAvatarStore(config),
   // The process outlives each request, so background work just needs its errors logged.
   runInBackground: (task) => {
     task.catch((error: unknown) => logger.error("background task failed", { error }));

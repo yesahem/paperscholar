@@ -18,6 +18,7 @@
     "auth:schema": "auth generate --config scripts/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes && bun scripts/auth-schema-timestamptz.ts ../../packages/db/src/schema/auth.ts && prettier --write ../../packages/db/src/schema/auth.ts"
   },
   "dependencies": {
+    "@better-auth/core": "1.7.22",
     "@hono/zod-validator": "0.9.1",
     "@repo/content": "*",
     "@repo/db": "*",

@@ -1,0 +1,14 @@
+$kind: http-request
+name: Progress of a new account
+order: 3000
+method: GET
+url: "{{baseUrl}}/api/v1/progress"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is empty and private', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json()).to.eql({ items: [] });
+        pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store');
+      });

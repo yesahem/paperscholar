@@ -39,6 +39,7 @@ import { Input } from "@repo/ui/components/input";
 | `components/separator`        | A dividing line.                                                                                               |
 | `components/toast`            | Brief, non-blocking messages: `ToastProvider` once, then `useToast()`. Announced politely; errors as alerts.   |
 | `components/resizable-panels` | Two panes with a keyboard- and pointer-operable divider; stacked below 900 px.                                 |
+| `components/avatar`           | A user's picture in a circle, falling back to their initial when there is none or it fails to load.            |
 | `components/meter`            | A bar for a known quantity, such as tests passed. Show the number in text too.                                 |
 | `components/dialog`           | A modal on the native `<dialog>`: focus is trapped and restored, Escape and the backdrop close it.             |
 | `components/tabs`             | `Tabs`, `TabList`, `Tab`, `TabPanel`: the WAI-ARIA tabs pattern with a roving tab index.                       |
@@ -48,6 +49,7 @@ import { Input } from "@repo/ui/components/input";
 | --------------------- | --------------------------------------------------------- |
 | `lib/cn`              | `cn()`: join classes, later Tailwind classes win.         |
 | `lib/format`          | `formatBytes()`.                                          |
+| `lib/avatar`          | `avatarInitial()`: the fallback letter of an avatar.      |
 | `lib/file-validation` | `validateFiles()`, `matchesAccept()`, `describeAccept()`. |
 
 ## Rules

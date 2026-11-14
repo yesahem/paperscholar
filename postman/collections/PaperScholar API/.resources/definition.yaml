@@ -27,6 +27,9 @@ variables:
   - key: submissionId
     value: ""
     description: Set by "Create a run" to the queued submission.
+  - key: avatarUrl
+    value: ""
+    description: Set by "Upload an avatar" to the stored avatar's URL.
   - key: verifiesEmail
     value: ""
     description: Set by "Create a run" from GET /v1/config.

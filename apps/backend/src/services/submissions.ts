@@ -24,6 +24,7 @@ import {
   IN_FLIGHT_STATUSES,
   STALE_SUBMISSION_SECONDS,
   type CreateSubmission,
+  type Difficulty,
   type ListSubmissionsQuery,
   type Submission,
   type SubmissionList,
@@ -31,15 +32,16 @@ import {
 } from "@repo/shared";
 import type { Logger } from "@repo/shared/logger";
 import type { LimitsConfig } from "../env";
+import { decodeCursor, encodeCursor } from "../lib/cursor";
 import { AppError } from "../lib/errors";
 import { isUniqueViolation } from "./accounts";
+import { recordFinished } from "./progress";
 import type { RateLimiter } from "./rate-limiter";
 
 /** The API gives up on a run after this, past the harness's 60 s and the provider's 75 s. */
 export const RUN_ABORT_MS = 90_000;
 const DAY_SECONDS = 86_400;
 const GLOBAL_COUNTER_KEY = "submissions:global";
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type SubmissionRow = typeof schema.submissions.$inferSelect;
 
@@ -73,32 +75,6 @@ export function utcDay(now: Date): { start: Date; end: Date } {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
   return { start, end: new Date(start.getTime() + DAY_SECONDS * 1000) };
-}
-
-/** Cursors are opaque to clients: the last item's creation time and id. */
-export function encodeCursor(createdAt: Date, id: string): string {
-  return Buffer.from(JSON.stringify([createdAt.toISOString(), id])).toString("base64url");
-}
-
-export function decodeCursor(cursor: string): { createdAt: Date; id: string } {
-  try {
-    const value: unknown = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
-    if (
-      Array.isArray(value) &&
-      value.length === 2 &&
-      typeof value[0] === "string" &&
-      typeof value[1] === "string" &&
-      UUID.test(value[1]) &&
-      !Number.isNaN(Date.parse(value[0]))
-    ) {
-      return { createdAt: new Date(value[0]), id: value[1] };
-    }
-  } catch {
-    // Falls through to the validation error below.
-  }
-  throw new AppError("validation_error", {
-    details: { issues: [{ path: "cursor", message: "is not a cursor from this API" }] },
-  });
 }
 
 function toSummary(row: SubmissionRow): SubmissionSummary {
@@ -177,7 +153,10 @@ export function createSubmissions({
     return entry.version;
   }
 
-  async function runnable(row: SubmissionRow): Promise<RunnableProblem> {
+  /** What the run needs from the paper version recorded at creation. */
+  async function runnable(
+    row: SubmissionRow,
+  ): Promise<{ problem: RunnableProblem; difficulty: Difficulty }> {
     const version = Number(row.contentVersion);
     const [publicDoc, privateDoc] = await Promise.all([
       content.getPublicDoc(row.paperId, version),
@@ -195,16 +174,29 @@ export function createSubmissions({
       );
     }
     return {
-      entryPoint: problem.entryPoint,
-      environment: problem.environment,
-      allowedPackages: problem.allowedPackages,
-      prohibitedImports: problem.prohibitedImports,
-      timeLimitSeconds: problem.timeLimitSeconds,
-      memoryLimitMb: problem.memoryLimitMb,
-      testsPublic: hidden.testsPublic,
-      testsHidden: hidden.testsHidden,
-      helpers: hidden.helpers,
+      difficulty: problem.difficulty,
+      problem: {
+        entryPoint: problem.entryPoint,
+        environment: problem.environment,
+        allowedPackages: problem.allowedPackages,
+        prohibitedImports: problem.prohibitedImports,
+        timeLimitSeconds: problem.timeLimitSeconds,
+        memoryLimitMb: problem.memoryLimitMb,
+        testsPublic: hidden.testsPublic,
+        testsHidden: hidden.testsHidden,
+        helpers: hidden.helpers,
+      },
     };
+  }
+
+  /** The paper's published problems now, which a completion needs (docs/specs/04-database.md §4a). */
+  async function publishedProblemIds(paperId: string): Promise<string[]> {
+    const entry = await content.getEntry(paperId);
+    return (
+      entry?.problems
+        .filter((problem) => problem.status === "published")
+        .map((problem) => problem.id) ?? []
+    );
   }
 
   async function inFlightId(userId: string): Promise<string | null> {
@@ -323,7 +315,8 @@ export function createSubmissions({
 
       const log = logger.child({ submissionId, provider: provider.name });
       try {
-        const request = buildRunRequest(await runnable(row), {
+        const { problem, difficulty } = await runnable(row);
+        const request = buildRunRequest(problem, {
           runId: row.id,
           code: row.code,
           mode: row.mode,
@@ -335,26 +328,51 @@ export function createSubmissions({
           violations: result.violations,
           errorOutput: result.errorOutput,
         };
+        const paperProblemIds =
+          verdict.verdict === "passed" && row.mode === "submit"
+            ? await publishedProblemIds(row.paperId)
+            : [];
         const finishedAt = now();
-        await db
-          .update(table)
-          .set({
-            status: verdict.status,
+        // The result and what it means for the learner commit together
+        // (docs/specs/04-database.md §5.1).
+        const outcome = await db.transaction(async (tx) => {
+          const [updated] = await tx
+            .update(table)
+            .set({
+              status: verdict.status,
+              verdict: verdict.verdict,
+              testsPassed: verdict.testsPassed,
+              testsTotal: verdict.testsTotal,
+              result: stored,
+              durationMs: Math.round(result.durationMs),
+              finishedAt,
+            })
+            .where(and(eq(table.id, submissionId), eq(table.status, "running")))
+            .returning({ id: table.id });
+          // Reaped while it ran: the learner has already been told it failed.
+          if (!updated) return null;
+          return recordFinished(tx, {
+            submissionId,
+            userId: row.userId,
+            paperId: row.paperId,
+            problemId: row.problemId,
+            mode: row.mode,
             verdict: verdict.verdict,
-            testsPassed: verdict.testsPassed,
-            testsTotal: verdict.testsTotal,
-            result: stored,
-            durationMs: Math.round(result.durationMs),
+            difficulty,
+            paperProblemIds,
             finishedAt,
-          })
-          .where(and(eq(table.id, submissionId), eq(table.status, "running")));
+          });
+        });
         const fields = {
           verdict: verdict.verdict,
           outcome: result.outcome,
           sandboxMs: Math.round(result.durationMs),
           totalMs: finishedAt.getTime() - row.createdAt.getTime(),
+          ...(outcome?.firstSolve ? { firstSolve: true } : {}),
+          ...(outcome?.paperCompleted ? { paperCompleted: true } : {}),
         };
-        if (verdict.status === "error")
+        if (outcome === null) log.warn("submission finished after it was reaped", fields);
+        else if (verdict.status === "error")
           log.error("submission failed on our side", fields);
         else log.info("submission finished", fields);
       } catch (error) {
@@ -396,8 +414,8 @@ export function createSubmissions({
             after === null
               ? undefined
               : or(
-                  lt(table.createdAt, after.createdAt),
-                  and(eq(table.createdAt, after.createdAt), lt(table.id, after.id)),
+                  lt(table.createdAt, after.at),
+                  and(eq(table.createdAt, after.at), lt(table.id, after.id)),
                 ),
           ),
         )

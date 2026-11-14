@@ -232,7 +232,7 @@ Each becomes required at the milestone that first uses it. M0 requires only `WEB
 | `INTERNAL_SECRET`                                                                                                       | Authenticates scheduled and internal calls                                                                                                       |
 | `STORAGE_DRIVER`                                                                                                        | `r2` or `fs`. Where all paper content lives. `r2` is required on serverless hosting.                                                             |
 | `R2_ACCOUNT_ID` or `R2_ENDPOINT`, `R2_REGION` (default `auto`), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | With `r2`: the account (or an explicit S3 endpoint for other S3-compatible stores), signing region, credentials and the private bucket. From M1. |
-| `R2_PUBLIC_BUCKET`, `R2_PUBLIC_URL`                                                                                     | The public bucket for avatars and its URL. From M5.                                                                                              |
+| `R2_PUBLIC_BUCKET`, `R2_PUBLIC_URL`                                                                                     | The public bucket for avatars and its URL. Required with `r2` from M5. With `fs`, avatars live under `public/` in `STORAGE_FS_PATH`.             |
 | `STORAGE_FS_PATH`                                                                                                       | With `fs`: the directory to use                                                                                                                  |
 
 ### `apps/backend` — optional; each enables features (spec 13 §4)
@@ -251,10 +251,11 @@ Each becomes required at the milestone that first uses it. M0 requires only `WEB
 
 ### `apps/web`
 
-| Variable               | Purpose                                         |
-| ---------------------- | ----------------------------------------------- |
-| `API_ORIGIN`           | Where `/api/*` is proxied to. Server-side only. |
-| `NEXT_PUBLIC_SITE_URL` | Canonical site URL for metadata and links       |
+| Variable               | Purpose                                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `API_ORIGIN`           | Where `/api/*` is proxied to. Server-side only.                                                |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site URL for metadata and links                                                      |
+| `AVATAR_ORIGIN`        | Optional, from M5: origin of `R2_PUBLIC_URL`, allowed by the image policy. Read at build time. |
 
 The web app has no secrets. Any variable prefixed `NEXT_PUBLIC_` is public by definition.
 

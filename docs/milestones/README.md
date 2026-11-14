@@ -10,7 +10,7 @@ What has been built, milestone by milestone. The plan is in
 | M2 — Read API and content pages       | Done (preview deploy pending) | [M2-read-api.md](M2-read-api.md)             |
 | M3 — Accounts and roles               | Done (preview checks pending) | [M3-accounts.md](M3-accounts.md)             |
 | M4 — Submissions, sandbox, workspace  | Done (hosted sandbox pending) | [M4-submissions.md](M4-submissions.md)       |
-| M5 — Progress, profile, leaderboard   | Not started                   |                                              |
+| M5 — Progress, profile, leaderboard   | Done (R2 avatars pending)     | [M5-progress.md](M5-progress.md)             |
 | M6 — Paper pipeline                   | Not started                   |                                              |
 | M7 — Quiz, listings, feedback         | Not started                   |                                              |
 | M8 — Courses                          | Not started                   |                                              |

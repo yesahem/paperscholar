@@ -129,6 +129,14 @@ export async function resetPassword(
   await post("/reset-password", input, fetchImpl);
 }
 
+/** Changes the password and signs out every other session. */
+export async function changePassword(
+  input: { currentPassword: string; newPassword: string },
+  fetchImpl?: FetchLike,
+): Promise<void> {
+  await post("/change-password", { ...input, revokeOtherSessions: true }, fetchImpl);
+}
+
 export async function resendVerificationEmail(
   email: string,
   fetchImpl?: FetchLike,

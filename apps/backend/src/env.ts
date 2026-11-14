@@ -104,6 +104,11 @@ const envSchema = z
     R2_ACCESS_KEY_ID: optionalText,
     R2_SECRET_ACCESS_KEY: optionalText,
     R2_BUCKET: optionalText,
+    R2_PUBLIC_BUCKET: optionalText,
+    R2_PUBLIC_URL: z
+      .url({ protocol: /^https?$/, error: "must be an http(s) URL" })
+      .transform((url) => url.replace(/\/+$/, ""))
+      .optional(),
 
     BETTER_AUTH_SECRET: z
       .string({
@@ -162,6 +167,8 @@ const envSchema = z
       require("R2_ACCESS_KEY_ID", "when STORAGE_DRIVER is r2");
       require("R2_SECRET_ACCESS_KEY", "when STORAGE_DRIVER is r2");
       require("R2_BUCKET", "when STORAGE_DRIVER is r2");
+      require("R2_PUBLIC_BUCKET", "when STORAGE_DRIVER is r2 (avatars)");
+      require("R2_PUBLIC_URL", "when STORAGE_DRIVER is r2 (avatars)");
       if (env.R2_ACCOUNT_ID === undefined && env.R2_ENDPOINT === undefined) {
         context.addIssue({
           code: "custom",
@@ -282,6 +289,23 @@ function storageConfig(env: Env): StorageConfig {
     bucket: present(env.R2_BUCKET, "R2_BUCKET"),
     accessKeyId: present(env.R2_ACCESS_KEY_ID, "R2_ACCESS_KEY_ID"),
     secretAccessKey: present(env.R2_SECRET_ACCESS_KEY, "R2_SECRET_ACCESS_KEY"),
+  };
+}
+
+/**
+ * Where avatars live (docs/specs/03-content.md §2.4). With `fs` they sit in
+ * the storage folder and the API serves them; with `r2` they go to the public
+ * bucket and browsers fetch them from its URL.
+ */
+export type AvatarStorageConfig =
+  { driver: "fs" } | { driver: "r2"; bucket: string; publicUrl: string };
+
+function avatarStorageConfig(env: Env): AvatarStorageConfig {
+  if (env.STORAGE_DRIVER === "fs") return { driver: "fs" };
+  return {
+    driver: "r2",
+    bucket: present(env.R2_PUBLIC_BUCKET, "R2_PUBLIC_BUCKET"),
+    publicUrl: present(env.R2_PUBLIC_URL, "R2_PUBLIC_URL"),
   };
 }
 
@@ -411,6 +435,8 @@ export interface AppConfig {
   databaseUrl: string;
   /** Where paper content and uploads live (docs/specs/03-content.md §2.4). */
   storage: StorageConfig;
+  /** Where avatars are stored and served from. */
+  avatars: AvatarStorageConfig;
   /** Limits enforced by the API; `runsPerDay` is published at GET /v1/config. */
   limits: LimitsConfig;
   runner: RunnerConfig;
@@ -439,6 +465,7 @@ export function loadConfig(
     version: env.APP_VERSION ?? env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "dev",
     databaseUrl: env.DATABASE_URL,
     storage: storageConfig(env),
+    avatars: avatarStorageConfig(env),
     limits: {
       runsPerDay: env.RUNS_PER_DAY,
       runsPerMinute: env.RUNS_PER_MINUTE,

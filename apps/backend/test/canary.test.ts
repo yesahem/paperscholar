@@ -95,7 +95,15 @@ describe.skipIf(!DATABASE_URL || !hasPython)(
           expect(created.status).toBe(202);
           const { id } = submissionCreatedSchema.parse(await created.json());
           await settle();
-          for (const path of [`/api/v1/submissions/${id}`, "/api/v1/submissions"]) {
+          for (const path of [
+            `/api/v1/submissions/${id}`,
+            "/api/v1/submissions",
+            "/api/v1/progress",
+            "/api/v1/leaderboard",
+            "/api/v1/leaderboard/me",
+            `/api/v1/users/${username}`,
+            `/api/v1/users/${username}/following`,
+          ]) {
             const body = await (await browser.request(path)).text();
             expect({ path, leaked: body.includes(CANARY) }).toEqual({
               path,

@@ -1,9 +1,10 @@
 import type { ProblemSummary } from "@repo/shared";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { SolvedMark } from "@/components/progress/solved-mark";
 import { DifficultyBadge } from "./difficulty-badge";
 
-/** A paper's problems in the order they build on each other. */
+/** A paper's problems in the order they build on each other, solved ones ticked. */
 export function ProblemList({
   paperId,
   problems,
@@ -34,6 +35,7 @@ export function ProblemList({
                 {problem.summary}
               </span>
             </span>
+            <SolvedMark paperId={paperId} problemId={problem.id} />
             <DifficultyBadge difficulty={problem.difficulty} />
             <ChevronRight
               aria-hidden="true"

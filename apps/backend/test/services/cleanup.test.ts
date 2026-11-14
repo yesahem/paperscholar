@@ -73,6 +73,7 @@ describe.skipIf(!DATABASE_URL)("runCleanup", () => {
     const report = await runCleanup({ db, submissions, logger: silentLogger, now });
     expect(report.reapedSubmissions).toBeGreaterThanOrEqual(1);
     expect(report.deletedRunSubmissions).toBeGreaterThanOrEqual(1);
+    expect(report.statsDrift).toBe(0);
 
     const left = await db
       .select({

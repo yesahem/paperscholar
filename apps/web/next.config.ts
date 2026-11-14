@@ -24,7 +24,10 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders({ development: process.env.NODE_ENV === "development" }),
+        headers: securityHeaders({
+          development: process.env.NODE_ENV === "development",
+          avatarOrigin: env.AVATAR_ORIGIN,
+        }),
       },
       {
         // Editor files are versioned by the monaco-editor package, not by file name.

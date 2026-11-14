@@ -1,0 +1,16 @@
+$kind: http-request
+name: Own rank before solving
+order: 3100
+method: GET
+url: "{{baseUrl}}/api/v1/leaderboard/me?sort=recent_activity"
+queryParams:
+  - key: sort
+    value: recent_activity
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is null: nobody is ranked before a solve', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json()).to.eql({ rank: null });
+      });

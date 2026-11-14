@@ -65,6 +65,12 @@ export function useRun({ paperId, problemId, signedIn }: UseRunOptions) {
       void queries.invalidateQueries({
         queryKey: queryKeys.problemSubmissions(paperId, problemId),
       });
+      // A solve updates solved marks, profiles and rankings (docs/specs/08-web.md §5.5).
+      if (mode === "submit" && submission.verdict === "passed") {
+        for (const queryKey of [queryKeys.progress, ["leaderboard"], ["profile"]]) {
+          void queries.invalidateQueries({ queryKey });
+        }
+      }
     },
     [paperId, problemId, queries],
   );

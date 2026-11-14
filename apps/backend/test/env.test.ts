@@ -38,6 +38,7 @@ describe("loadConfig", () => {
       version: "dev",
       databaseUrl: DATABASE_URL,
       storage: { driver: "fs", root: resolve(".storage") },
+      avatars: { driver: "fs" },
       limits: {
         runsPerDay: DEFAULT_RUNS_PER_DAY,
         runsPerMinute: 10,
@@ -124,6 +125,8 @@ describe("loadConfig", () => {
       "R2_ACCESS_KEY_ID is required when STORAGE_DRIVER is r2",
       "R2_ACCOUNT_ID or R2_ENDPOINT is required when STORAGE_DRIVER is r2",
       "R2_BUCKET is required when STORAGE_DRIVER is r2",
+      "R2_PUBLIC_BUCKET is required when STORAGE_DRIVER is r2 (avatars)",
+      "R2_PUBLIC_URL is required when STORAGE_DRIVER is r2 (avatars)",
       "R2_SECRET_ACCESS_KEY is required when STORAGE_DRIVER is r2",
     ]);
     const config = loadConfig({
@@ -133,6 +136,13 @@ describe("loadConfig", () => {
       R2_ACCESS_KEY_ID: "key",
       R2_SECRET_ACCESS_KEY: "secret",
       R2_BUCKET: "paperscholar-content",
+      R2_PUBLIC_BUCKET: "paperscholar-public",
+      R2_PUBLIC_URL: "https://avatars.example.com/",
+    });
+    expect(config.avatars).toEqual({
+      driver: "r2",
+      bucket: "paperscholar-public",
+      publicUrl: "https://avatars.example.com",
     });
     expect(config.storage).toEqual({
       driver: "r2",
@@ -143,6 +153,10 @@ describe("loadConfig", () => {
       accessKeyId: "key",
       secretAccessKey: "secret",
     });
+  });
+
+  test("avatars are served by the API with the fs driver", () => {
+    expect(loadConfig(valid).avatars).toEqual({ driver: "fs" });
   });
 
   test("serverless hosting refuses the local-disk driver", () => {

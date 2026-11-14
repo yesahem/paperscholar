@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ContentUnavailable } from "@/components/content/content-unavailable";
 import { DifficultyMix } from "@/components/content/difficulty-badge";
 import { PageContainer, PageHeader } from "@/components/layout/page-header";
+import { PaperProgress } from "@/components/progress/paper-progress";
 import {
   getPapers,
   getTracks,
@@ -65,6 +66,11 @@ function TrackSection({
                 {pluralise(paper.problemCount, "problem")}
                 <DifficultyMix counts={paper.difficultyCounts} />
               </span>
+              <PaperProgress
+                paperId={paper.id}
+                problemCount={paper.problemCount}
+                className="mt-2 max-w-sm"
+              />
             </Link>
           </li>
         ))}

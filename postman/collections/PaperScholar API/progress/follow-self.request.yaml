@@ -1,0 +1,18 @@
+$kind: http-request
+name: Follow yourself
+order: 4300
+method: PUT
+url: "{{baseUrl}}/api/v1/users/{{username}}/follow"
+headers:
+  - key: Origin
+    value: "{{webOrigin}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // On an instance that requires a confirmed email, following is refused first.
+      pm.test('is refused', () => {
+        pm.expect(pm.response.code).to.be.oneOf([400, 403]);
+        const code = pm.response.json().error.code;
+        pm.expect(code).to.eql(pm.response.code === 400 ? 'validation_error' : 'email_not_verified');
+      });

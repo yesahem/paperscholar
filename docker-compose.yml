@@ -43,6 +43,8 @@ x-backend-environment: &backend-environment
   R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
   R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
   R2_BUCKET: ${R2_BUCKET:-}
+  R2_PUBLIC_BUCKET: ${R2_PUBLIC_BUCKET:-}
+  R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
 
 services:
   # The only service published to the outside.
@@ -66,6 +68,7 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         SITE_URL: ${WEB_ORIGIN:?set WEB_ORIGIN in .env}
+        AVATAR_ORIGIN: ${AVATAR_ORIGIN:-}
     image: paperscholar-web
     restart: unless-stopped
     networks: [edge, app]

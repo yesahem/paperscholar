@@ -1,5 +1,6 @@
 import { and, eq, lt, schema, type Database } from "@repo/db";
 import type { Logger } from "@repo/shared/logger";
+import { checkStatsDrift } from "./progress";
 import type { Submissions } from "./submissions";
 
 const DAY_MS = 86_400_000;
@@ -13,11 +14,15 @@ export interface CleanupReport {
   deletedRateLimitCounters: number;
   deletedSessions: number;
   deletedVerifications: number;
+  /** Counters of `user_stats` that disagreed with what they are derived from. */
+  statsDrift: number;
 }
 
 /**
  * The daily job (docs/specs/05-api.md §10): reaps submissions whose worker
- * died and deletes what retention says to. Safe to run at any time, and twice.
+ * died, deletes what retention says to, and checks a sample of the solve
+ * counters against their source (docs/specs/04-database.md §5.2). Safe to run
+ * at any time, and twice.
  */
 export async function runCleanup({
   db,
@@ -55,12 +60,15 @@ export async function runCleanup({
     .where(lt(schema.verification.expiresAt, now))
     .returning({ id: schema.verification.id });
 
+  const drift = await checkStatsDrift(db, logger);
+
   const report: CleanupReport = {
     reapedSubmissions,
     deletedRunSubmissions: runs.length,
     deletedRateLimitCounters: counters.length,
     deletedSessions: sessions.length,
     deletedVerifications: verifications.length,
+    statsDrift: drift.length,
   };
   logger.info("cleanup finished", { ...report });
   return report;

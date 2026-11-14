@@ -1,0 +1,29 @@
+$kind: http-request
+name: Own public profile
+order: 4000
+method: GET
+url: "{{baseUrl}}/api/v1/users/{{username}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('has the profile shape, all zero', () => {
+        pm.response.to.have.status(200);
+        const body = pm.response.json();
+        pm.expect(body).to.have.all.keys(
+          'username', 'avatarUrl', 'bio', 'joinedAt', 'stats', 'papers', 'activity',
+          'followingCount', 'followerCount', 'isFollowedByMe',
+        );
+        pm.expect(body.username).to.eql(pm.collectionVariables.get('username'));
+        pm.expect(body.stats).to.eql({
+          problemsSolved: 0, papersCompleted: 0, easy: 0, medium: 0, hard: 0,
+          currentStreak: 0, longestStreak: 0,
+        });
+        pm.expect(body.papers).to.eql([]);
+        pm.expect(body.activity).to.eql([]);
+        pm.expect(body.isFollowedByMe).to.eql(false);
+      });
+      pm.test('never carries the email or role', () => {
+        pm.expect(pm.response.text()).to.not.include(pm.collectionVariables.get('email'));
+        pm.expect(pm.response.json()).to.not.have.any.keys('email', 'role');
+      });

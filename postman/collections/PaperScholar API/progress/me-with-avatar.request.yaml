@@ -1,0 +1,13 @@
+$kind: http-request
+name: Me shows the avatar
+order: 5200
+method: GET
+url: "{{baseUrl}}/api/v1/me"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('carries the uploaded avatar URL', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().avatarUrl).to.eql(pm.collectionVariables.get('avatarUrl'));
+      });

@@ -190,6 +190,13 @@ create table rate_limit_counters (
 );
 ```
 
+> **Built in M5** (migration `0005_progress.sql`). `user_stats` and `daily_activity` also
+> have `created_at` and `updated_at`, following §2; `progress` and `paper_completions` keep
+> `solved_at` / `completed_at` as their creation time. `progress.difficulty` has a `CHECK`
+> from the shared vocabulary. The difficulty recorded is the problem's in the paper version
+> the submission was graded against; the paper's problem list for a completion is the
+> published problems in the cached `index.json`.
+
 Notes:
 
 - `submissions_one_in_flight` enforces "one run at a time per user" in the database, so
@@ -224,6 +231,13 @@ When a `submit`-mode submission finishes with verdict `passed`, the following ha
 For any other finished submission, only steps 1 and the `submissions + 1` part of step 4
 apply. A submission ending in `internal_error` does not touch `daily_activity`.
 
+> **Built in M5** (`recordFinished` in `apps/backend/src/services/progress.ts`, called by
+> `execute` inside the transaction that stores the result). The `user_stats` row is
+> upserted, then locked with `select … for update` while the counters and streak change.
+> A run reaped while it was running records nothing. "Passing again changes nothing but
+> the day's submission count" means the day's `submissions` and `passed_submits`; the
+> streak cannot change on the same day.
+
 ### 5.2 Other rules
 
 - `progress` rows are never deleted or revoked by content changes.
@@ -236,6 +250,10 @@ apply. A submission ending in `internal_error` does not touch `daily_activity`.
 - Days and streaks use UTC. This is a simplification; per-user time zones are out of scope.
 - A nightly job recomputes `user_stats` from `progress` and `paper_completions` for a
   sample of users and logs any drift. Counters are a cache of derivable truth.
+  _(M5: part of the daily cleanup, 200 random users, one `warn` line per disagreeing
+  counter; nothing is corrected automatically.)_
+- The profile heatmap counts `passed_submits` per day, the same days streaks count. A
+  stored streak whose last day is before yesterday is reported as 0.
 
 ## 6. Pipeline tables (milestone 6)
 

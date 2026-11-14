@@ -9,6 +9,7 @@
     "./accounts": "./src/accounts.ts",
     "./errors": "./src/errors.ts",
     "./logger": "./src/logger.ts",
+    "./progress": "./src/progress.ts",
     "./site": "./src/site.ts",
     "./submissions": "./src/submissions.ts",
     "./vocabulary": "./src/vocabulary.ts"

@@ -1,0 +1,21 @@
+$kind: http-request
+name: Delete me after progress
+order: 9000
+method: DELETE
+url: "{{baseUrl}}/api/v1/me"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "confirm": "{{username}}" }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('deletes the account', () => {
+        pm.response.to.have.status(204);
+      });

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   AuthRequestError,
+  changePassword,
   googleSignInUrl,
   hasSession,
   signInWithEmail,
@@ -33,6 +34,34 @@ describe("auth API calls", () => {
       name: "ada",
       callbackURL: "/verify-email",
     });
+  });
+
+  test("changing the password signs out every other session", async () => {
+    const { calls, fetchImpl } = recording(Response.json({ token: null }));
+    await changePassword(
+      { currentPassword: "old one", newPassword: "new one!" },
+      fetchImpl,
+    );
+    expect(calls[0]?.url).toBe("/api/auth/change-password");
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
+      currentPassword: "old one",
+      newPassword: "new one!",
+      revokeOtherSessions: true,
+    });
+  });
+
+  test("a wrong current password reads as such", async () => {
+    const { fetchImpl } = recording(
+      Response.json({ code: "INVALID_PASSWORD" }, { status: 400 }),
+    );
+    const error = await changePassword(
+      { currentPassword: "x", newPassword: "yyyyyyyy" },
+      fetchImpl,
+    ).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(AuthRequestError);
+    expect(error instanceof AuthRequestError && error.problem.message).toBe(
+      "Your current password is not right.",
+    );
   });
 
   test("a refusal becomes an AuthRequestError with a readable problem", async () => {

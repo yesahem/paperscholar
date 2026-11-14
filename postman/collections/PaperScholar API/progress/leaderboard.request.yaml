@@ -1,0 +1,33 @@
+$kind: http-request
+name: Leaderboard
+order: 1500
+method: GET
+url: "{{baseUrl}}/api/v1/leaderboard?sort=problems_solved&limit=5&offset=0"
+queryParams:
+  - key: sort
+    value: problems_solved
+  - key: limit
+    value: "5"
+  - key: offset
+    value: "0"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is public and ranks by position', () => {
+        pm.response.to.have.status(200);
+        const body = pm.response.json();
+        pm.expect(body).to.have.all.keys('sort', 'items', 'total');
+        pm.expect(body.sort).to.eql('problems_solved');
+        pm.expect(body.items.length).to.be.at.most(5);
+        body.items.forEach((item, index) => {
+          pm.expect(item).to.have.all.keys(
+            'rank', 'username', 'avatarUrl', 'problemsSolved', 'papersCompleted', 'lastSolvedAt',
+          );
+          pm.expect(item.rank).to.eql(index + 1);
+          pm.expect(item.problemsSolved).to.be.above(0);
+        });
+      });
+      pm.test('carries no email', () => {
+        pm.expect(pm.response.text()).to.not.include('@');
+      });

@@ -336,6 +336,27 @@ are rejected.
 Public profile responses never contain email or role. Users with zero solves
 are not listed on the leaderboard.
 
+> **Built in M5.**
+>
+> - `GET /v1/users?q=` answers `{ items: { username, avatarUrl }[] }`; `q` is lowercased and
+>   may hold only username characters, so no pattern reaches SQL. 30 per minute per
+>   address, read as Better Auth reads it (`CLIENT_IP_HEADER`, `TRUSTED_PROXIES`).
+> - `GET /v1/users/:username/following` is `{ items, nextCursor }`, `limit` 20 (max 100),
+>   newest first.
+> - Following needs a confirmed email on instances that verify; following yourself is
+>   `400 validation_error`; an unknown username is `404`.
+> - `POST /v1/me/avatar`: the field is `avatar` and must be the only one. The type is read
+>   from the file's first bytes, more than 40 megapixels is refused before decoding, and the
+>   image is re-encoded to WebP of at most 256 px (aspect kept, never enlarged) with Bun's
+>   built-in `Bun.Image`. Over 2 MB is `413`; 10 uploads per hour per user, then `429`.
+>   Each upload gets a new key, the old file is deleted.
+> - `avatarUrl` is `${R2_PUBLIC_URL}/avatars/<userId>/<id>.webp` with the `r2` driver, and
+>   the same-origin path `/api/avatars/<userId>/<id>.webp` with `fs` (§10).
+> - Profiles and the leaderboard send `private, no-store` like everything under `/v1`;
+>   they are cheap index reads, and a solve should show at once.
+> - `GET /v1/leaderboard/me` without a session is `401`. `GET /v1/progress` is ordered by
+>   `solvedAt`.
+
 ## 8. Endpoints — instance and maintainers
 
 ### `GET /v1/config` (milestone 2)
@@ -418,6 +439,8 @@ Specified in spec 10. Paths reserved here so naming stays consistent.
 | `POST /api/csp-report`             | None                                     | Content-Security-Policy violation reports from browsers (spec 11 §2). Logs a reduced form; `204`. |
 | `POST /api/internal/cron/cleanup`  | `Authorization: Bearer $INTERNAL_SECRET` | Daily: reap stuck submissions, apply retention (04 §8). Also `GET`, which Vercel Cron sends.      |
 | `POST /api/internal/pipeline/tick` | `Authorization: Bearer $INTERNAL_SECRET` | Runs pipeline tasks (09 §13). Serverless mode only; self-hosted instances use the worker process. |
+
+| `GET /api/avatars/:userId/:file` | None | Avatars stored by the `fs` driver, `image/webp`, cached for a year (`immutable`). 404 with `r2`. |
 
 > **Built in M4.** Without `INTERNAL_SECRET` the internal endpoints answer 404. On Vercel,
 > `CRON_SECRET` is set to the same value so Vercel Cron sends it; self-hosted instances

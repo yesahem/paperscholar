@@ -11,6 +11,7 @@ import { NavLink } from "./nav-link";
 const NAVIGATION = [
   { href: "/papers", label: "Papers" },
   { href: "/roadmap", label: "Roadmap" },
+  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/about", label: "About" },
 ] as const;
 

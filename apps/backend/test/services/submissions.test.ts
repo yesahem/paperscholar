@@ -3,13 +3,7 @@ import type { RunResult, SandboxProvider } from "@repo/runner";
 import { silentLogger } from "@repo/shared/logger";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createRateLimiter } from "../../src/services/rate-limiter";
-import {
-  createSubmissions,
-  decodeCursor,
-  encodeCursor,
-  toSubmission,
-  utcDay,
-} from "../../src/services/submissions";
+import { createSubmissions, toSubmission, utcDay } from "../../src/services/submissions";
 import { syncedContent, type SyncedContent } from "../content-fixture";
 import { DATABASE_URL, useTestDatabase } from "../database";
 import { testConfig } from "../helpers";
@@ -19,21 +13,6 @@ describe("utcDay", () => {
     const { start, end } = utcDay(new Date("2026-03-09T23:59:59.999Z"));
     expect(start.toISOString()).toBe("2026-03-09T00:00:00.000Z");
     expect(end.toISOString()).toBe("2026-03-10T00:00:00.000Z");
-  });
-});
-
-describe("cursors", () => {
-  test("round-trip, and anything else is a validation error", () => {
-    const id = "01890a5d-ac96-774b-bcce-b302099a8057";
-    const createdAt = new Date("2026-11-14T10:00:00.123Z");
-    expect(decodeCursor(encodeCursor(createdAt, id))).toEqual({ createdAt, id });
-    for (const bad of [
-      "garbage",
-      Buffer.from('["x","y"]').toString("base64url"),
-      Buffer.from(`["2026-01-01","not-uuid"]`).toString("base64url"),
-    ]) {
-      expect(() => decodeCursor(bad)).toThrow("The request is invalid.");
-    }
   });
 });
 

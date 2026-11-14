@@ -1,9 +1,11 @@
 import type { ContentStore } from "@repo/content";
 import type { Database } from "@repo/db";
 import type { SandboxProvider } from "@repo/runner";
+import { AVATAR_MAX_BYTES } from "@repo/shared";
 import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
+import type { AvatarStore } from "./adapters/avatar-store";
 import type { EmailSender } from "./adapters/email/types";
 import { createAuth } from "./auth/auth";
 import { verifiesEmail, type AppConfig } from "./env";
@@ -18,18 +20,25 @@ import { requestContext } from "./middleware/request-context";
 import { requestLogger } from "./middleware/request-logger";
 import { session } from "./middleware/session";
 import { authRoutes } from "./routes/auth";
+import { avatarRoutes } from "./routes/avatars";
 import { configRoutes } from "./routes/config";
 import { cspReportRoutes } from "./routes/csp-reports";
 import { healthRoutes } from "./routes/health";
 import { internalRoutes } from "./routes/internal";
-import { meRoutes } from "./routes/me";
+import { leaderboardRoutes } from "./routes/leaderboard";
+import { AVATAR_UPLOAD_PATH, meRoutes } from "./routes/me";
 import { papersRoutes } from "./routes/papers";
+import { progressRoutes } from "./routes/progress";
 import { submissionsRoutes } from "./routes/submissions";
 import { tracksRoutes } from "./routes/tracks";
+import { usersRoutes } from "./routes/users";
 import { createAccounts } from "./services/accounts";
+import { createAvatars } from "./services/avatars";
 import { runCleanup } from "./services/cleanup";
 import { createContentCatalog } from "./services/content-catalog";
 import { instanceConfig } from "./services/instance-config";
+import { createLeaderboard } from "./services/leaderboard";
+import { createProfiles } from "./services/profiles";
 import { createRateLimiter } from "./services/rate-limiter";
 import { createSubmissions, type Submissions } from "./services/submissions";
 import type { AppEnv } from "./types";
@@ -45,6 +54,8 @@ export interface AppDependencies {
   email: EmailSender | null;
   /** Where learners' code runs (`createSandboxProvider`). */
   sandbox: SandboxProvider;
+  /** Where avatars are kept (`createAvatarStore`). */
+  avatarStore: AvatarStore;
   /**
    * Keeps work going after the response is sent. Serverless hosts must keep
    * the function alive for it (`waitUntil`); a long-running server need not.
@@ -63,6 +74,7 @@ export function createApp({
   db,
   email,
   sandbox,
+  avatarStore,
   runInBackground,
 }: AppDependencies) {
   const app = new Hono<AppEnv>();
@@ -74,7 +86,8 @@ export function createApp({
     requestLogger(),
     secureHeaders(),
     defaultCacheControl(),
-    limitBody(),
+    // The avatar upload carries a 2 MB image and its multipart framing.
+    limitBody(undefined, { [AVATAR_UPLOAD_PATH]: AVATAR_MAX_BYTES + 64 * 1024 }),
   );
 
   app.onError(createErrorHandler(logger));
@@ -83,7 +96,11 @@ export function createApp({
   const catalog = createContentCatalog(content);
   const limiter = createRateLimiter(db);
   const auth = createAuth({ config, db, email, limiter, logger, runInBackground });
-  const accounts = createAccounts({ db, auth });
+  const accounts = createAccounts({ db, auth, avatars: avatarStore, logger });
+  const avatarUrl = (key: string) => avatarStore.url(key);
+  const avatars = createAvatars({ db, store: avatarStore, limiter, logger });
+  const profiles = createProfiles({ db, content, avatarUrl });
+  const leaderboard = createLeaderboard({ db, avatarUrl });
   // Inline dispatch (docs/specs/07-runner.md §3): the run continues after the
   // 202, kept alive by the host's waitUntil on serverless.
   const submissions: Submissions = createSubmissions({
@@ -107,12 +124,27 @@ export function createApp({
     .route("/papers", papersRoutes(catalog))
     .route("/tracks", tracksRoutes(catalog))
     .route("/config", configRoutes(instanceConfig(config)))
-    .route("/me", meRoutes(accounts, auth))
-    .route("/submissions", submissionsRoutes(submissions, verifiesEmail(config)));
+    .route("/me", meRoutes(accounts, avatars, auth))
+    .route("/submissions", submissionsRoutes(submissions, verifiesEmail(config)))
+    .route("/progress", progressRoutes(db))
+    .route("/leaderboard", leaderboardRoutes(leaderboard))
+    .route(
+      "/users",
+      usersRoutes({
+        profiles,
+        limiter,
+        clientIp: {
+          header: config.auth.clientIpHeader,
+          trustedProxies: config.auth.trustedProxies,
+        },
+        instanceVerifiesEmail: verifiesEmail(config),
+      }),
+    );
 
   const api = new Hono<AppEnv>()
     .route("/health", healthRoutes({ version: config.version }))
     .route("/csp-report", cspReportRoutes())
+    .route("/avatars", avatarRoutes(avatarStore))
     .route("/auth", authRoutes(auth, config.webOrigin))
     .route(
       "/internal",

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DifficultyBadge } from "@/components/content/difficulty-badge";
 import { Markdown } from "@/components/content/markdown";
+import { SolvedMark } from "@/components/progress/solved-mark";
 import { LimitsBox } from "@/components/workspace/limits-box";
 import { Workspace } from "@/components/workspace/workspace";
 import { getPaper, getProblem } from "@/lib/api/content";
@@ -70,6 +71,7 @@ export default async function ProblemPage({ params }: ProblemPageProps) {
       </nav>
       <h1 className="truncate font-semibold">{problem.title}</h1>
       <DifficultyBadge difficulty={problem.difficulty} />
+      <SolvedMark paperId={paperId} problemId={problemId} variant="badge" />
     </div>
   );
 

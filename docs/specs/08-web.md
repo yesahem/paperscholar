@@ -258,6 +258,16 @@ per-paper progress; follow button and counts. Own profile links to settings.
 **Settings.** Username, bio, avatar upload with preview, change password, delete account
 behind a typed confirmation.
 
+> **Built in M5.** Solved marks are client components (`components/progress/`) inside the
+> cached pages, filled from `GET /v1/progress`, which a passed submit invalidates along with
+> profiles and rankings. The paper page's button reads "Start with step 1", "Continue with
+> step N" or "Review from step 1". The leaderboard keeps `?sort=&page=` in the URL; the
+> signed-in user's rank is pinned with "Show my place". `/profile/[username]` renders its
+> shell on the server and loads the profile in the browser, so an unknown username shows a
+> not-found state with HTTP 200. Settings change the password through Better Auth's
+> `change-password`, signing out other sessions. `@repo/ui` gains `Avatar`; the bar is
+> the M4 `Meter`.
+
 **Maintainer screens.** Listed in spec 09 §17. The review screen reuses the workspace's
 editor and results components: a maintainer editing a generated test and pressing
 "Re-verify" sees the same per-test result view a learner sees. Maintainers get an

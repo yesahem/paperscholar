@@ -1,0 +1,7 @@
+$kind: collection
+name: Progress and profiles
+description: |-
+  Progress, the leaderboard, public profiles, follows and avatars
+  (docs/specs/05-api.md §7), as a throwaway account deleted at the end. The
+  account solves nothing, so its rank is null and its profile is all zero.
+order: 3700
