@@ -4,7 +4,7 @@ Learn machine-learning papers by implementing them, one step at a time, with tes
 your code. Free to use, open source, and self-hostable.
 
 > **Status: early development.** Papers, accounts, running and submitting code, progress
-> and the paper pipeline (M0–M6) work, locally and self-hosted. Follow progress in
+> the paper pipeline and its CMS (M0–M6, M11) work, locally and self-hosted. Follow progress in
 > [`docs/milestones/`](docs/milestones/README.md); the plan is in [`docs/specs/`](docs/specs/README.md).
 
 ## What it will do
@@ -16,19 +16,21 @@ your code. Free to use, open source, and self-hostable.
 
 ## Repository
 
-| Path                                                   | What                                                                 |
-| ------------------------------------------------------ | -------------------------------------------------------------------- |
-| `apps/web`                                             | Next.js frontend. Proxies `/api/*` to the backend.                   |
-| `apps/backend`                                         | Hono API on Bun. Runs serverless or as a long-running server.        |
-| `apps/runner`                                          | Self-hosting only: runs each submission in its own Docker container. |
-| `packages/runner`                                      | Sandbox providers, the Python test harness, the adversarial suite.   |
-| `packages/content`, `packages/storage`                 | Paper content and the object storage it lives in.                    |
-| `packages/ui`                                          | Shared component kit and design tokens.                              |
-| `packages/shared`                                      | Contracts shared by both apps: error codes, schemas, env parsing.    |
-| `packages/db`                                          | Drizzle schema, migrations and the Postgres client.                  |
-| `packages/eslint-config`, `packages/typescript-config` | Shared tooling presets.                                              |
-| `docs/specs`                                           | What to build.                                                       |
-| `docs/milestones`                                      | What has been built, milestone by milestone.                         |
+| Path                                                   | What                                                                   |
+| ------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `apps/web`                                             | Next.js frontend for learners. Proxies `/api/*` to the backend.        |
+| `apps/cms`                                             | Next.js CMS for maintainers: upload papers, run the pipeline, publish. |
+| `apps/backend`                                         | Hono API on Bun. Runs serverless or as a long-running server.          |
+| `apps/runner`                                          | Self-hosting only: runs each submission in its own Docker container.   |
+| `packages/runner`                                      | Sandbox providers, the Python test harness, the adversarial suite.     |
+| `packages/content`, `packages/storage`                 | Paper content and the object storage it lives in.                      |
+| `packages/ui`                                          | Shared component kit and design tokens.                                |
+| `packages/web-core`                                    | What web and cms share: API client, session hooks, headers, editor.    |
+| `packages/shared`                                      | Contracts shared by both apps: error codes, schemas, env parsing.      |
+| `packages/db`                                          | Drizzle schema, migrations and the Postgres client.                    |
+| `packages/eslint-config`, `packages/typescript-config` | Shared tooling presets.                                                |
+| `docs/specs`                                           | What to build.                                                         |
+| `docs/milestones`                                      | What has been built, milestone by milestone.                           |
 
 ## Host it yourself
 
@@ -61,6 +63,7 @@ bun install
 # Environment files. Local defaults work as-is, except the backend's auth secret.
 cp apps/backend/.env.example apps/backend/.env
 cp apps/web/.env.example apps/web/.env
+cp apps/cms/.env.example apps/cms/.env
 cp packages/db/.env.example packages/db/.env
 echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> apps/backend/.env
 
@@ -74,7 +77,7 @@ bun run runner:setup
 # Load the paper library into storage (apps/backend/.storage by default)
 bun run content:sync
 
-# Web on http://localhost:3000, backend on http://localhost:8797
+# Web on http://localhost:3000, CMS on http://localhost:3001, backend on http://localhost:8797
 bun dev
 ```
 
@@ -91,16 +94,16 @@ being sent, so the verification and password-reset links appear in the `bun dev`
 Make yourself an admin with `bun run admin:grant <email> admin`, or list your address in
 `ADMIN_EMAILS` before signing up.
 
-Papers from PDFs: with `ANTHROPIC_API_KEY` set for the backend, maintainers upload papers
-from the account menu (**Upload paper**) and review the drafts the pipeline writes. Try it
-without a key or any cost with `LLM_DRIVER=fake` in `apps/backend/.env`, which writes a small
-demonstration paper. From the command line:
-
-```sh
-bun run paper:ingest ./paper.pdf --confirm-rights --wait   # or arxiv:1706.03762; --demo with the fake model
-bun run paper:status [<ingestion-id>]
-bun run paper:publish <ingestion-id> --by <maintainer email>
-```
+Papers from PDFs happen in the **CMS** (`apps/cms`, <http://localhost:3001>), the only place
+the pipeline is started. Sign in there with an account that is a maintainer or admin
+(`bun run admin:grant <email> maintainer`; accounts are made on the learner site). With
+`ANTHROPIC_API_KEY` set for the backend, upload a PDF or paste an arXiv link: the pipeline
+chunks the paper, plans the steps, writes each step's description, starter code, solution
+and tests, proves them in the sandbox, and waits for you to review and publish. The CMS
+also manages tracks, shows what the pipeline has cost and what failed, and lets an admin run
+the quality eval. Try it without a key or any cost with `LLM_DRIVER=fake` in
+`apps/backend/.env`: any valid PDF then produces a small demonstration paper. The backend's
+`CMS_ORIGIN` must be the CMS's address.
 
 `bun run worker` runs the pipeline's tasks (and the daily cleanup); the API also runs them
 itself after an upload.

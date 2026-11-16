@@ -11,8 +11,8 @@ import {
 import { Skeleton } from "@repo/ui/components/skeleton";
 import type { ReactNode } from "react";
 import { useAuthDialog } from "@/components/auth/auth-dialog";
-import { LoadError } from "@/components/states/load-error";
-import { useMe } from "@/lib/queries";
+import { LoadError } from "@repo/web-core/states/load-error";
+import { useMe } from "@repo/web-core/queries/session";
 import { AvatarForm } from "./avatar-form";
 import { DeleteAccount } from "./delete-account";
 import { PasswordForm } from "./password-form";

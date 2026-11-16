@@ -11,8 +11,8 @@ import { ChevronLeft, ChevronRight, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuthDialog } from "@/components/auth/auth-dialog";
-import { EmptyState } from "@/components/states/empty-state";
-import { LoadError } from "@/components/states/load-error";
+import { EmptyState } from "@repo/web-core/states/empty-state";
+import { LoadError } from "@repo/web-core/states/load-error";
 import {
   leaderboardViewToParams,
   offsetOf,
@@ -23,7 +23,8 @@ import {
   type LeaderboardView as View,
 } from "@/lib/leaderboard/params";
 import { formatRecentDay } from "@/lib/profile/format";
-import { useLeaderboard, useLeaderboardRank, useMe } from "@/lib/queries";
+import { useLeaderboard, useLeaderboardRank } from "@/lib/queries";
+import { useMe } from "@repo/web-core/queries/session";
 
 /**
  * Rankings with three sorts, 50 per page, and the signed-in user's own rank

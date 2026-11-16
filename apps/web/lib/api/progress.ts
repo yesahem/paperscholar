@@ -6,7 +6,7 @@ import {
 } from "@repo/shared/progress";
 // zod/mini: this module runs in the browser, where the full zod build is too large.
 import * as z from "zod/mini";
-import { apiRequest, type CallOptions } from "./client";
+import { apiRequest, type CallOptions } from "@repo/web-core/api/client";
 
 /**
  * Solves and rankings (docs/specs/05-api.md §7). Each schema mirrors the one

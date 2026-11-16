@@ -1,5 +1,6 @@
 import { eq, schema, type Database } from "@repo/db";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, SITE } from "@repo/shared";
+import { hasRole, type Role } from "@repo/shared/accounts";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
@@ -101,7 +102,7 @@ export function createAuth({
     baseURL: config.webOrigin,
     basePath: AUTH_BASE_PATH,
     secret: config.auth.secret,
-    trustedOrigins: [config.webOrigin],
+    trustedOrigins: [config.webOrigin, ...(config.cmsOrigin ? [config.cmsOrigin] : [])],
     database: drizzleAdapter(db, {
       provider: "pg",
       schema: {
@@ -185,6 +186,32 @@ export function createAuth({
     },
 
     databaseHooks: {
+      session: {
+        create: {
+          // A session from the CMS origin is for maintainers only
+          // (docs/specs/14-cms.md §3.3). The refusal reads as a wrong password.
+          before: async (newSession, context) => {
+            if (config.cmsOrigin === null) return;
+            const origin =
+              context?.request?.headers.get("origin") ??
+              context?.headers?.get("origin") ??
+              null;
+            if (origin !== config.cmsOrigin) return;
+            const [row] = await db
+              .select({ role: schema.user.role })
+              .from(schema.user)
+              .where(eq(schema.user.id, newSession.userId))
+              .limit(1);
+            if (!row || !hasRole(row.role as Role, "maintainer")) {
+              authLogger.info("cms sign-in refused", { reason: "role" });
+              throw new APIError("UNAUTHORIZED", {
+                code: "INVALID_EMAIL_OR_PASSWORD",
+                message: "Invalid email or password",
+              });
+            }
+          },
+        },
+      },
       user: {
         create: {
           before: async (user) => {

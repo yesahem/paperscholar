@@ -14,7 +14,7 @@ import {
 } from "@repo/shared/submissions";
 // zod/mini: this module runs in the browser, where the full zod build is too large.
 import * as z from "zod/mini";
-import { apiRequest, type FetchLike } from "./client";
+import { apiRequest, type FetchLike } from "@repo/web-core/api/client";
 
 const summaryFields = {
   id: z.string(),

@@ -35,19 +35,6 @@ export function countPdfPages(bytes: Uint8Array): number | null {
   return pages === 0 ? null : pages;
 }
 
-/** `1706.03762`, `1706.03762v5`, or an old-style id such as `math/0211159`. */
-const ARXIV_ID = /^(\d{4}\.\d{4,5}|[a-z-]+(\.[A-Z]{2})?\/\d{7})(v\d+)?$/;
-
-/** Accepts `arxiv:1706.03762`, an abs or pdf URL, or the bare id; returns the bare id. */
-export function parseArxivId(input: string): string | null {
-  const trimmed = input
-    .trim()
-    .replace(/^arxiv:/i, "")
-    .replace(/^https?:\/\/(www\.)?arxiv\.org\/(abs|pdf)\//, "")
-    .replace(/\.pdf$/, "");
-  return ARXIV_ID.test(trimmed) ? trimmed : null;
-}
-
 export interface IntakeInput {
   pdf: Uint8Array;
   sourceType: IngestionSourceType;

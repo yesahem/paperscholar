@@ -5,7 +5,7 @@ import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { LoadError } from "@/components/states/load-error";
+import { LoadError } from "@repo/web-core/states/load-error";
 import { getFollowing } from "@/lib/api/users";
 import { queryKeys } from "@/lib/queries";
 

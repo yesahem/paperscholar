@@ -23,7 +23,6 @@ import {
   ingestionKeys,
   isPdf,
   outlineSchema,
-  parseArxivId,
   PipelineError,
   planSchema,
   readJson,
@@ -37,6 +36,7 @@ import {
   ingestionOptionsSchema,
   ingestionStepSchema,
   ingestionUsageSchema,
+  parseArxivReference,
   stepVerificationSummarySchema,
   waiverSchema,
   type IngestionCreated,
@@ -198,10 +198,11 @@ export function createIngestions({
       const { options } = body;
       try {
         if (body.arxivId !== undefined) {
-          const arxivId = parseArxivId(body.arxivId);
+          const arxivId = parseArxivReference(body.arxivId);
           if (!arxivId) {
             throw new AppError("validation_error", {
-              message: "That is not an arXiv id such as 1706.03762.",
+              message:
+                "That is not an arXiv id or link, such as 1706.03762 or https://arxiv.org/abs/1706.03762.",
               details: { issues: [{ path: "arxivId", message: "is not an arXiv id" }] },
             });
           }

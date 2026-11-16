@@ -17,12 +17,14 @@ import {
   type PaperPublicDoc,
   type StoredProblemPrivate,
   type StoredProblemPublic,
+  type StoredTrack,
   type TracksDoc,
 } from "../schemas/stored";
 import {
   ContentConcurrencyError,
   ContentCorruptError,
   ContentNotFoundError,
+  TracksConflictError,
 } from "./errors";
 import {
   CONTENT_INDEX_KEY,
@@ -334,7 +336,8 @@ export class ContentStore {
     if (!publicObject) return null;
     const privateKey = paperDraftKey(paperId, "private");
     const privateObject = await this.storage.get(privateKey);
-    if (!privateObject) throw new ContentCorruptError(privateKey, "missing beside its public part");
+    if (!privateObject)
+      throw new ContentCorruptError(privateKey, "missing beside its public part");
     return {
       public: parseJson(publicKey, publicObject.body, paperDraftPublicDocSchema),
       private: parseJson(privateKey, privateObject.body, paperDraftPrivateDocSchema),
@@ -365,14 +368,88 @@ export class ContentStore {
     return doc;
   }
 
-  async putTracks(doc: TracksDoc): Promise<void> {
+  /** The stored document read straight from storage, for writers holding the lock. */
+  private async readTracksUncached(): Promise<TracksDoc | null> {
+    const object = await this.storage.get(TRACKS_KEY);
+    return object ? parseJson(TRACKS_KEY, object.body, tracksDocSchema) : null;
+  }
+
+  private async writeTracks(doc: TracksDoc): Promise<TracksDoc> {
     const valid = tracksDocSchema.parse(doc);
-    await this.lock.withLock(async () => {
-      await this.storage.put(TRACKS_KEY, JSON.stringify(valid), {
-        contentType: JSON_TYPE,
-      });
+    await this.storage.put(TRACKS_KEY, JSON.stringify(valid), {
+      contentType: JSON_TYPE,
     });
     this.cachedTracks = { doc: valid, fetchedAt: Date.now() };
+    return valid;
+  }
+
+  /**
+   * A maintainer's save of the whole track list (docs/specs/14-cms.md §7.3).
+   * Under the content lock: refused with `TracksConflictError` unless the
+   * stored document is still at `expectedRevision`. Every track saved here is
+   * owned by the CMS from now on, so `content:sync` leaves it alone.
+   */
+  async replaceTracks(
+    expectedRevision: number,
+    tracks: readonly Omit<StoredTrack, "origin">[],
+  ): Promise<TracksDoc> {
+    return this.lock.withLock(async () => {
+      const current = await this.readTracksUncached();
+      const revision = current?.revision ?? 0;
+      if (revision !== expectedRevision) {
+        throw new TracksConflictError(expectedRevision, revision);
+      }
+      return this.writeTracks({
+        schemaVersion: 1,
+        sourceHash: current?.sourceHash ?? "",
+        revision: revision + 1,
+        tracks: tracks.map((track) => ({ ...track, origin: "cms" })),
+      });
+    });
+  }
+
+  /**
+   * Brings the repository's tracks into storage (`content:sync`), leaving
+   * every CMS-owned track exactly as it is. Library tracks are replaced in
+   * place, dropped when the files no longer have them, and new ones are
+   * appended unless a CMS track already has the id.
+   */
+  async syncLibraryTracks(
+    library: readonly Omit<StoredTrack, "origin">[],
+    sourceHash: string,
+    { dryRun = false }: { dryRun?: boolean } = {},
+  ): Promise<"created" | "updated" | "unchanged"> {
+    return this.lock.withLock(async () => {
+      const current = await this.readTracksUncached();
+      const fresh = new Map(library.map((track) => [track.id, track]));
+      const kept: StoredTrack[] = [];
+      for (const track of current?.tracks ?? []) {
+        if (track.origin === "cms") {
+          kept.push(track);
+          continue;
+        }
+        const replacement = fresh.get(track.id);
+        if (replacement) kept.push({ ...replacement, origin: "library" });
+      }
+      const present = new Set(kept.map((track) => track.id));
+      for (const track of library) {
+        if (!present.has(track.id)) kept.push({ ...track, origin: "library" });
+      }
+      const unchanged =
+        current !== null &&
+        current.sourceHash === sourceHash &&
+        JSON.stringify(current.tracks) === JSON.stringify(kept);
+      if (unchanged) return "unchanged";
+      if (!dryRun) {
+        await this.writeTracks({
+          schemaVersion: 1,
+          sourceHash,
+          revision: (current?.revision ?? 0) + 1,
+          tracks: kept,
+        });
+      }
+      return current ? "updated" : "created";
+    });
   }
 
   private async revalidateIndex(): Promise<CachedIndex> {

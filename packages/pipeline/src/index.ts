@@ -24,7 +24,6 @@ export {
   createIngestion,
   findArxivIngestion,
   isPdf,
-  parseArxivId,
   type IntakeInput,
   type IntakeResult,
 } from "./intake";
@@ -96,6 +95,7 @@ export {
 export { buildDraftContents, writeDraft, type DraftContents } from "./stages/assemble";
 export { learnerView } from "./stages/model-checks";
 export {
+  DEFAULT_EVAL_SET,
   evalSetSchema,
   measureIngestion,
   summariseMeasures,

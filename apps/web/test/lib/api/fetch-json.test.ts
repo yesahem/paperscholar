@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 import { fetchJson, type FetchLike } from "@/lib/api/fetch-json";
 
 const schema = z.object({ items: z.array(z.string()) });

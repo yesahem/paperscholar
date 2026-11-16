@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  formatDuration,
-  retryWhen,
-  timedOutTests,
-  verdictHeadline,
-} from "@/lib/submissions/describe";
+import { retryWhen, timedOutTests, verdictHeadline } from "@/lib/submissions/describe";
 
 describe("verdictHeadline", () => {
   test("counts tests for passed and failed; names the other verdicts", () => {
@@ -42,10 +37,7 @@ describe("timedOutTests", () => {
 });
 
 describe("formatting", () => {
-  test("durations and retry times", () => {
-    expect(formatDuration(340)).toBe("340 ms");
-    expect(formatDuration(1234)).toBe("1.2 s");
-    expect(formatDuration(null)).toBe("");
+  test("retry times", () => {
     expect(retryWhen(42, null)).toBe("in 42 seconds");
     expect(retryWhen(600, null)).toBe("in 10 minutes");
     expect(retryWhen(null, "2026-11-15T00:00:00.000Z")).toBe("after 00:00 UTC");

@@ -7,6 +7,7 @@ import {
 } from "../pipeline";
 import { contentTagSchema } from "../content";
 import { ROLES } from "../accounts";
+import { ARXIV_REFERENCE_MAX_LENGTH } from "../arxiv";
 import {
   CHECK_IDS,
   currentStepSchema,
@@ -50,7 +51,8 @@ export type UploadUrlResponse = z.infer<typeof uploadUrlResponseSchema>;
 export const createIngestionSchema = z
   .strictObject({
     pdfKey: z.string().min(1).max(512).optional(),
-    arxivId: z.string().trim().min(1).max(100).optional(),
+    /** An arXiv id or a link to the paper (docs/specs/14-cms.md §5). */
+    arxivId: z.string().trim().min(1).max(ARXIV_REFERENCE_MAX_LENGTH).optional(),
     options: ingestionOptionsSchema.default({
       targetSteps: null,
       environment: null,

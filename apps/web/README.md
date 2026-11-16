@@ -12,14 +12,14 @@ bun dev                  # from the repository root: web on :3000, backend on :8
 
 ## Layout
 
-| Path                    | Holds                                                           |
-| ----------------------- | --------------------------------------------------------------- |
-| `app/(site)/`           | Document pages: landing, papers, paper, roadmap, about, legal   |
-| `app/(workspace)/`      | The problem workspace (full-height, no footer)                  |
-| `components/<feature>/` | `content/`, `workspace/`, `layout/`, `theme/`, `legal/`, `og/`  |
-| `lib/`                  | `env.ts`, `api/` (validated fetches), `content/` (pure helpers) |
-| `scripts/`              | `copy-monaco.ts`: self-hosts the editor in `public/monaco/`     |
-| `test/`                 | `bun test` for everything in `lib/`                             |
+| Path                    | Holds                                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/(site)/`           | Document pages: landing, papers, paper, roadmap, about, legal                                                                           |
+| `app/(workspace)/`      | The problem workspace (full-height, no footer)                                                                                          |
+| `components/<feature>/` | `content/`, `workspace/`, `layout/`, `theme/`, `legal/`, `og/`                                                                          |
+| `lib/`                  | `env.ts`, `api/` (validated fetches), `content/` (pure helpers)                                                                         |
+| (shared)                | `@repo/web-core`: the API client, session hooks, headers, theme, editor; its `copy-monaco.ts` self-hosts the editor in `public/monaco/` |
+| `test/`                 | `bun test` for everything in `lib/`                                                                                                     |
 
 ## Rules
 

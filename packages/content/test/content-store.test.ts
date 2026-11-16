@@ -11,6 +11,7 @@ import {
   createReadOnlyLock,
   readContentLibrary,
   syncLibrary,
+  TracksConflictError,
 } from "../src";
 import { baseLibrary, writeLibrary } from "../src/testing";
 
@@ -70,11 +71,12 @@ describe("a read-only store", () => {
     await expect(reader.setPaperStatus("second-paper", "draft")).rejects.toBeInstanceOf(
       ContentReadOnlyError,
     );
-    const tracks = await reader.getTracks();
-    expect(tracks).not.toBeNull();
-    if (tracks) {
-      await expect(reader.putTracks(tracks)).rejects.toBeInstanceOf(ContentReadOnlyError);
-    }
+    await expect(reader.replaceTracks(1, [])).rejects.toBeInstanceOf(
+      ContentReadOnlyError,
+    );
+    await expect(reader.syncLibraryTracks([], "x")).rejects.toBeInstanceOf(
+      ContentReadOnlyError,
+    );
   });
 
   test("sees another process's change once its cache expires", async () => {
@@ -136,5 +138,101 @@ describe("ContentStore drafts", () => {
         privateProblems: [],
       }),
     ).rejects.toThrow("do not match");
+  });
+});
+
+describe("tracks", () => {
+  const cmsTrack = {
+    id: "my-track",
+    title: "My track",
+    summary: "Made in the CMS.",
+    paperIds: ["second-paper"],
+  };
+
+  test("a save from the current revision bumps it and makes every track CMS-owned", async () => {
+    const { writer } = await syncedStorage();
+    const before = await writer.getTracks({ fresh: true });
+    expect(before?.revision).toBe(1);
+    expect(before?.tracks.every((track) => track.origin === "library")).toBe(true);
+
+    const saved = await writer.replaceTracks(1, [...(before?.tracks ?? []), cmsTrack]);
+    expect(saved.revision).toBe(2);
+    expect(saved.tracks.every((track) => track.origin === "cms")).toBe(true);
+    expect((await writer.getTracks({ fresh: true }))?.tracks).toHaveLength(2);
+  });
+
+  test("a save from a stale revision changes nothing", async () => {
+    const { writer } = await syncedStorage();
+    await writer.replaceTracks(1, [cmsTrack]);
+    await expect(writer.replaceTracks(1, [])).rejects.toBeInstanceOf(TracksConflictError);
+    const stored = await writer.getTracks({ fresh: true });
+    expect(stored?.revision).toBe(2);
+    expect(stored?.tracks.map((track) => track.id)).toEqual(["my-track"]);
+  });
+
+  test("two simultaneous saves from one revision: one wins, one conflicts", async () => {
+    const { writer } = await syncedStorage();
+    const results = await Promise.allSettled([
+      writer.replaceTracks(1, [cmsTrack]),
+      writer.replaceTracks(1, [{ ...cmsTrack, id: "other-track" }]),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+  });
+
+  test("syncing again leaves CMS tracks, and a new library track with a taken id is skipped", async () => {
+    const { writer } = await syncedStorage();
+    const library = (await writer.getTracks({ fresh: true }))?.tracks ?? [];
+    const first = library[0];
+    if (!first) throw new Error("the base library has a track");
+    await writer.replaceTracks(1, [{ ...first, title: "Edited in the CMS" }, cmsTrack]);
+
+    const outcome = await writer.syncLibraryTracks(
+      [{ ...first, title: "From the files" }],
+      "a-new-hash",
+    );
+    expect(outcome).toBe("updated");
+    const stored = await writer.getTracks({ fresh: true });
+    expect(stored?.tracks.map((track) => [track.id, track.title, track.origin])).toEqual([
+      [first.id, "Edited in the CMS", "cms"],
+      ["my-track", "My track", "cms"],
+    ]);
+    expect(stored?.revision).toBe(3);
+  });
+
+  test("syncing replaces library tracks in place, drops removed ones, and is idempotent", async () => {
+    const { writer } = await syncedStorage();
+    const library = (await writer.getTracks({ fresh: true }))?.tracks ?? [];
+    const first = library[0];
+    if (!first) throw new Error("the base library has a track");
+    const input = [
+      { ...first, title: "Retitled in the files" },
+      { id: "added", title: "Added", summary: "New.", paperIds: first.paperIds },
+    ];
+
+    expect(await writer.syncLibraryTracks(input, "h2", { dryRun: true })).toBe("updated");
+    expect((await writer.getTracks({ fresh: true }))?.revision).toBe(1);
+
+    expect(await writer.syncLibraryTracks(input, "h2")).toBe("updated");
+    expect(await writer.syncLibraryTracks(input, "h2")).toBe("unchanged");
+    expect(await writer.syncLibraryTracks(input.slice(1), "h3")).toBe("updated");
+    const stored = await writer.getTracks({ fresh: true });
+    expect(stored?.tracks.map((track) => track.id)).toEqual(["added"]);
+  });
+
+  test("a document written before origin and revision existed still reads", async () => {
+    const { storage, writer } = await syncedStorage();
+    await storage.put(
+      "content/tracks.json",
+      JSON.stringify({
+        schemaVersion: 1,
+        sourceHash: "old",
+        tracks: [{ id: "legacy", title: "Legacy", summary: "Old.", paperIds: ["a"] }],
+      }),
+      { contentType: "application/json" },
+    );
+    const stored = await writer.getTracks({ fresh: true });
+    expect(stored?.revision).toBe(0);
+    expect(stored?.tracks[0]?.origin).toBe("library");
   });
 });

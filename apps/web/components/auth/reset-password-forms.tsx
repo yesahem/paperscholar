@@ -8,9 +8,9 @@ import { Input } from "@repo/ui/components/input";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { requestPasswordReset, resetPassword } from "@/lib/auth/auth-api";
-import { useInstanceConfig } from "@/lib/queries";
-import { useAuthForm } from "./use-auth-form";
+import { requestPasswordReset, resetPassword } from "@repo/web-core/auth/auth-api";
+import { useInstanceConfig } from "@repo/web-core/queries/session";
+import { useAuthForm } from "@repo/web-core/auth/use-auth-form";
 
 /** Asks for a reset link. The answer is the same whether or not the address has an account. */
 export function RequestResetForm() {

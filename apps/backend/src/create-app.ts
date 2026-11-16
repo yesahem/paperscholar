@@ -21,8 +21,11 @@ import { originCheck } from "./middleware/origin-check";
 import { requestContext } from "./middleware/request-context";
 import { requestLogger } from "./middleware/request-logger";
 import { session } from "./middleware/session";
+import { adminDashboardRoutes } from "./routes/admin/dashboard";
+import { adminEvalRoutes } from "./routes/admin/evals";
 import { adminIngestionRoutes } from "./routes/admin/ingestions";
 import { adminPaperRoutes } from "./routes/admin/papers";
+import { adminTrackRoutes } from "./routes/admin/tracks";
 import { adminUserRoutes } from "./routes/admin/users";
 import { authRoutes } from "./routes/auth";
 import { avatarRoutes } from "./routes/avatars";
@@ -41,8 +44,12 @@ import { createAccounts } from "./services/accounts";
 import { createAvatars } from "./services/avatars";
 import { runCleanup } from "./services/cleanup";
 import { createAdminPapers } from "./services/admin-papers";
+import { createAdminTracks } from "./services/admin-tracks";
+import { createDashboard } from "./services/dashboard";
+import { createEvals } from "./services/evals";
 import { createContentCatalog } from "./services/content-catalog";
 import { createIngestions, PDF_UPLOAD_PATH_PREFIX } from "./services/ingestions";
+import { PROMPT_VERSION } from "@repo/pipeline";
 import { instanceConfig } from "./services/instance-config";
 import { createLeaderboard } from "./services/leaderboard";
 import { createProfiles } from "./services/profiles";
@@ -127,6 +134,12 @@ export function createApp({
     dispatch: (id) => runInBackground(submissions.execute(id)),
   });
 
+  if (pipeline && config.cmsOrigin === null) {
+    logger.warn(
+      "The paper pipeline is on but CMS_ORIGIN is not set; set it to the CMS's origin so maintainers can sign in there (docs/specs/14-cms.md §3.4).",
+    );
+  }
+
   const ingestions = pipeline
     ? createIngestions({
         deps: pipeline.deps,
@@ -142,10 +155,26 @@ export function createApp({
       lock: createAdvisoryLock(db, CONTENT_INDEX_LOCK),
     });
   const adminPapers = createAdminPapers({ db, content: contentWriter });
+  const adminTracks = createAdminTracks({ content: contentWriter });
+  const evals =
+    pipeline && ingestions ? createEvals({ deps: pipeline.deps, ingestions }) : null;
+  const dashboard = createDashboard({
+    db,
+    pipeline: {
+      enabled: pipeline !== null,
+      model: pipeline?.deps.llm.model ?? null,
+      promptVersion: PROMPT_VERSION,
+      limits: {
+        ingestionsPerDay: config.pipeline.limits.ingestionsPerDay,
+        concurrentIngestions: config.pipeline.limits.concurrentIngestions,
+        outputTokenBudget: config.pipeline.limits.outputTokenBudget,
+      },
+    },
+  });
 
   const v1 = new Hono<AppEnv>()
     .use(
-      originCheck(config.webOrigin),
+      originCheck(config.webOrigin, config.cmsOrigin),
       session(auth),
       mutationLimit(limiter, config.limits.mutationsPerMinute),
     )
@@ -153,6 +182,9 @@ export function createApp({
     .use("/admin/*", requireRole("maintainer", accounts.currentRole))
     .route("/admin/ingestions", adminIngestionRoutes(ingestions))
     .route("/admin/papers", adminPaperRoutes(adminPapers))
+    .route("/admin/dashboard", adminDashboardRoutes(dashboard))
+    .route("/admin/tracks", adminTrackRoutes(adminTracks))
+    .route("/admin/evals", adminEvalRoutes(evals, accounts))
     .route("/admin/users", adminUserRoutes(accounts))
     .route("/papers", papersRoutes(catalog))
     .route("/tracks", tracksRoutes(catalog))
@@ -178,7 +210,7 @@ export function createApp({
     .route("/health", healthRoutes({ version: config.version }))
     .route("/csp-report", cspReportRoutes())
     .route("/avatars", avatarRoutes(avatarStore))
-    .route("/auth", authRoutes(auth, config.webOrigin))
+    .route("/auth", authRoutes(auth, config.webOrigin, config.cmsOrigin))
     .route(
       "/internal",
       internalRoutes(config.internalSecret, {

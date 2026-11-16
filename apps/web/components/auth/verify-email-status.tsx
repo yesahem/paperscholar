@@ -4,7 +4,7 @@ import { Alert } from "@repo/ui/components/alert";
 import { buttonVariants } from "@repo/ui/components/button";
 import Link from "next/link";
 import { useEffect } from "react";
-import { useRefreshMe } from "@/lib/queries";
+import { useRefreshMe } from "@repo/web-core/queries/session";
 import { VerificationBanner } from "./verification-banner";
 
 const ERRORS: Record<string, string> = {

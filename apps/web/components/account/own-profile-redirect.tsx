@@ -3,7 +3,7 @@
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useMe } from "@/lib/queries";
+import { useMe } from "@repo/web-core/queries/session";
 
 /** `/profile`: the signed-in user's own profile, or sign-in first (docs/specs/08-web.md §2). */
 export function OwnProfileRedirect() {

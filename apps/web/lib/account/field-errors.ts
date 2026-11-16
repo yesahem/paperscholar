@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 
 /**
  * Per-field messages from a `validation_error`'s `details.issues`, and the

@@ -12,7 +12,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { fieldErrors } from "@/lib/account/field-errors";
 import { updateMe } from "@/lib/api/account";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 import { queryKeys } from "@/lib/queries";
 
 /** Username and bio (`PATCH /v1/me`). Only what changed is sent. */

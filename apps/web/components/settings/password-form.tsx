@@ -6,8 +6,8 @@ import { Button } from "@repo/ui/components/button";
 import { Field } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import { useState, type FormEvent } from "react";
-import { useAuthForm } from "@/components/auth/use-auth-form";
-import { changePassword } from "@/lib/auth/auth-api";
+import { useAuthForm } from "@repo/web-core/auth/use-auth-form";
+import { changePassword } from "@repo/web-core/auth/auth-api";
 
 /** Change the password; every other signed-in device is signed out. */
 export function PasswordForm() {

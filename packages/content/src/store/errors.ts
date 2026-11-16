@@ -29,3 +29,14 @@ export class ContentReadOnlyError extends Error {
     this.name = "ContentReadOnlyError";
   }
 }
+
+/** Tracks were saved from an out-of-date revision (docs/specs/14-cms.md §7.3). */
+export class TracksConflictError extends Error {
+  constructor(
+    readonly expected: number,
+    readonly actual: number,
+  ) {
+    super(`The tracks are at revision ${actual}, not ${expected}`);
+    this.name = "TracksConflictError";
+  }
+}

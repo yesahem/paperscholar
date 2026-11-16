@@ -51,12 +51,6 @@ export function timedOutTests(submission: Pick<Submission, "tests">): string[] |
   return names.length > 0 ? names : null;
 }
 
-/** "1.2 s", "340 ms". */
-export function formatDuration(ms: number | null): string {
-  if (ms === null) return "";
-  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
-}
-
 /** "in 42 seconds", "in 3 minutes", "at 00:00 UTC" for a reset time. */
 export function retryWhen(
   retryAfterSeconds: number | null,

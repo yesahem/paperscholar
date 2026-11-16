@@ -18,7 +18,7 @@ export interface IngestionState {
   }[];
 }
 
-/** An ingestion with its steps and task queue, for progress views and `paper:status`. */
+/** An ingestion with its steps and task queue, for progress views. */
 export async function getIngestionState(
   db: Database,
   id: string,

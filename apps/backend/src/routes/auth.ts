@@ -11,9 +11,9 @@ import type { AppEnv } from "../types";
  * Its responses are copied so they carry this request's `X-Request-Id`, and
  * its 429s gain the standard `Retry-After` header (docs/specs/05-api.md §3).
  */
-export function authRoutes(auth: Auth, webOrigin: string) {
+export function authRoutes(auth: Auth, webOrigin: string, cmsOrigin: string | null) {
   return new Hono<AppEnv>()
-    .use(originCheck(webOrigin))
+    .use(originCheck(webOrigin, cmsOrigin))
     .on(["GET", "POST"], "/*", async (c) => {
       const response = await auth.handler(c.req.raw);
       const headers = new Headers(response.headers);

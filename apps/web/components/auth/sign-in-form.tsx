@@ -6,11 +6,11 @@ import { Field } from "@repo/ui/components/field";
 import { Input } from "@repo/ui/components/input";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { signInWithEmail } from "@/lib/auth/auth-api";
-import { useInstanceConfig } from "@/lib/queries";
+import { signInWithEmail } from "@repo/web-core/auth/auth-api";
+import { useInstanceConfig } from "@repo/web-core/queries/session";
 import { FormDivider } from "./form-divider";
 import { GoogleButton } from "./google-button";
-import { useAuthForm } from "./use-auth-form";
+import { useAuthForm } from "@repo/web-core/auth/use-auth-form";
 
 export interface SignInFormProps {
   /** Where to go after signing in with Google, which leaves the page. */

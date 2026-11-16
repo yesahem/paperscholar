@@ -8,10 +8,11 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Undo2 } from "lucide-react";
 import { useState } from "react";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 import { getSubmission, listProblemSubmissions } from "@/lib/api/submissions";
 import { queryKeys } from "@/lib/queries";
-import { formatDuration, VERDICT_LABELS } from "@/lib/submissions/describe";
+import { formatDuration } from "@repo/web-core/results/format";
+import { VERDICT_LABELS } from "@/lib/submissions/describe";
 
 export interface SubmissionsPanelProps {
   paperId: string;

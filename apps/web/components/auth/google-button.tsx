@@ -2,7 +2,7 @@
 
 import { Button } from "@repo/ui/components/button";
 import { useState } from "react";
-import { AuthRequestError, googleSignInUrl } from "@/lib/auth/auth-api";
+import { AuthRequestError, googleSignInUrl } from "@repo/web-core/auth/auth-api";
 
 /**
  * Continues with Google through the redirect flow: the browser leaves for

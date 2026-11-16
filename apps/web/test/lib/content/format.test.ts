@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  formatAuthors,
-  formatTag,
-  humaniseTestName,
-  pluralise,
-} from "@/lib/content/format";
+import { formatAuthors, formatTag, pluralise } from "@/lib/content/format";
 
 describe("format", () => {
   test("authors: every name up to three, then a count", () => {
@@ -20,8 +15,7 @@ describe("format", () => {
     expect(pluralise(0, "problem")).toBe("0 problems");
   });
 
-  test("turns test names and tags into words", () => {
-    expect(humaniseTestName("test_output_has_shape")).toBe("output has shape");
+  test("turns tags into words", () => {
     expect(formatTag("deep-learning")).toBe("deep learning");
   });
 });

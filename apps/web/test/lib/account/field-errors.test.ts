@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { fieldErrors } from "@/lib/account/field-errors";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 
 describe("fieldErrors", () => {
   test("maps validation issues to their fields, first message wins", () => {

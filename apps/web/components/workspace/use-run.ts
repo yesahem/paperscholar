@@ -6,7 +6,7 @@ import { useToast } from "@repo/ui/components/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthDialog } from "@/components/auth/auth-dialog";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 import { createSubmission, getSubmission } from "@/lib/api/submissions";
 import { queryKeys } from "@/lib/queries";
 import { retryWhen } from "@/lib/submissions/describe";
