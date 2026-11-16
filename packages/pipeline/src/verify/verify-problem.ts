@@ -29,7 +29,8 @@ export interface VerifyOptions {
   signal?: AbortSignal;
 }
 
-function toRunnable(problem: VerifiableProblem): RunnableProblem {
+/** The parts of a problem the sandbox needs. */
+export function toRunnable(problem: VerifiableProblem): RunnableProblem {
   return {
     entryPoint: problem.entryPoint,
     environment: problem.environment,
@@ -233,6 +234,7 @@ export async function verifyProblem(
     ref: problem.ref,
     passed: checks.every((result) => result.status === "passed"),
     checks,
+    tests: solutionRun.tests,
     runs,
     durationMs: Math.round(performance.now() - started),
   };

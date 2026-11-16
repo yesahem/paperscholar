@@ -2,7 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "bunVersion": "1.x",
   "functions": {
-    "src/index.ts": { "maxDuration": 120 }
+    "src/index.ts": { "maxDuration": 300 }
   },
-  "crons": [{ "path": "/api/internal/cron/cleanup", "schedule": "17 3 * * *" }]
+  "crons": [
+    { "path": "/api/internal/cron/cleanup", "schedule": "17 3 * * *" },
+    { "path": "/api/internal/cron/pipeline", "schedule": "* * * * *" }
+  ]
 }

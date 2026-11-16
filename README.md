@@ -3,8 +3,8 @@
 Learn machine-learning papers by implementing them, one step at a time, with tests that check
 your code. Free to use, open source, and self-hostable.
 
-> **Status: early development.** Papers, accounts, and running and submitting code (M0–M4)
-> work, locally and self-hosted. Follow progress in
+> **Status: early development.** Papers, accounts, running and submitting code, progress
+> and the paper pipeline (M0–M6) work, locally and self-hosted. Follow progress in
 > [`docs/milestones/`](docs/milestones/README.md); the plan is in [`docs/specs/`](docs/specs/README.md).
 
 ## What it will do
@@ -90,6 +90,20 @@ Sign up from the header. In development, emails are printed by the backend inste
 being sent, so the verification and password-reset links appear in the `bun dev` output.
 Make yourself an admin with `bun run admin:grant <email> admin`, or list your address in
 `ADMIN_EMAILS` before signing up.
+
+Papers from PDFs: with `ANTHROPIC_API_KEY` set for the backend, maintainers upload papers
+from the account menu (**Upload paper**) and review the drafts the pipeline writes. Try it
+without a key or any cost with `LLM_DRIVER=fake` in `apps/backend/.env`, which writes a small
+demonstration paper. From the command line:
+
+```sh
+bun run paper:ingest ./paper.pdf --confirm-rights --wait   # or arxiv:1706.03762; --demo with the fake model
+bun run paper:status [<ingestion-id>]
+bun run paper:publish <ingestion-id> --by <maintainer email>
+```
+
+`bun run worker` runs the pipeline's tasks (and the daily cleanup); the API also runs them
+itself after an upload.
 
 ## Checks
 

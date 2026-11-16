@@ -10,3 +10,4 @@ export {
 } from "./progress";
 export { rateLimitCounters } from "./rate-limit-counters";
 export { submissions, type StoredSubmissionResult } from "./submissions";
+export { ingestionSteps, ingestions, pipelineTasks } from "./pipeline";

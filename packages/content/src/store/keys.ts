@@ -13,6 +13,11 @@ export function paperVersionKey(
   return `content/papers/${paperId}/v${version}/${part}.json`;
 }
 
+/** `content/papers/<paperId>/draft/<part>.json`: an unpublished draft (docs/specs/03-content.md §2.1). */
+export function paperDraftKey(paperId: string, part: DocumentPart): string {
+  return `content/papers/${paperId}/draft/${part}.json`;
+}
+
 /** `content/index-history/20261113T151230123Z-1a2b3c4d.json` */
 export function indexHistoryKey(at: Date, nonce: string): string {
   const stamp = at.toISOString().replace(/[-:.]/g, "");

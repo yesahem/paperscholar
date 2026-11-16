@@ -58,6 +58,27 @@ export class TestBrowser {
     return response;
   }
 
+  /** Sends raw bytes, as a browser's `fetch(url, { method: "PUT", body: file })` would. */
+  async send(
+    path: string,
+    body: Uint8Array,
+    contentType: string,
+    method = "PUT",
+  ): Promise<Response> {
+    const response = await this.app.request(path, {
+      method,
+      headers: {
+        "x-forwarded-for": this.ip,
+        Origin: WEB_ORIGIN,
+        "Content-Type": contentType,
+        ...(this.cookies.size > 0 ? { Cookie: this.cookieHeader() } : {}),
+      },
+      body,
+    });
+    this.store(response);
+    return response;
+  }
+
   private store(response: Response) {
     for (const header of response.headers.getSetCookie()) {
       const [pair = "", ...attributes] = header.split(";");

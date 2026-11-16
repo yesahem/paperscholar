@@ -227,7 +227,8 @@ function FinishedResult({
   }
 }
 
-function TestList({ tests }: { tests: SubmissionTest[] }) {
+/** Each test's outcome, failures expanded: also the review screen's view of a reference run. */
+export function TestList({ tests }: { tests: SubmissionTest[] }) {
   if (tests.length === 0) return null;
   return (
     <ul

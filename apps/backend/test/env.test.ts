@@ -4,11 +4,13 @@ import { EnvError } from "@repo/shared";
 import {
   DEFAULT_AUTH_RATE_LIMIT_MAX,
   DEFAULT_AUTH_RATE_LIMIT_WINDOW_SECONDS,
+  DEFAULT_LLM_MODEL,
   DEFAULT_PORT,
   DEFAULT_RUNS_PER_DAY,
   loadConfig,
   verifiesEmail,
 } from "../src/env";
+import { TEST_PIPELINE_LIMITS } from "./helpers";
 
 const SECRET = "x".repeat(32);
 const DATABASE_URL = "postgres://u:p@localhost:5432/db";
@@ -62,6 +64,8 @@ describe("loadConfig", () => {
       },
       // Development prints emails instead of sending them.
       email: { driver: "log" },
+      // No model, no pipeline.
+      pipeline: { llm: null, enabled: false, limits: TEST_PIPELINE_LIMITS },
     });
   });
 
@@ -344,5 +348,63 @@ describe("runner configuration", () => {
     expect(problemsFor({ ...valid, INTERNAL_SECRET: "short" })[0]).toStartWith(
       "INTERNAL_SECRET must be at least 32",
     );
+  });
+});
+
+describe("pipeline configuration", () => {
+  test("an Anthropic key turns the pipeline on with the default model", () => {
+    const config = loadConfig({ ...valid, ANTHROPIC_API_KEY: "sk-test" });
+    expect(config.pipeline).toEqual({
+      llm: { driver: "anthropic", apiKey: "sk-test", model: DEFAULT_LLM_MODEL },
+      enabled: true,
+      limits: TEST_PIPELINE_LIMITS,
+    });
+    expect(
+      loadConfig({ ...valid, ANTHROPIC_API_KEY: "k", FEATURE_PIPELINE: "false" }).pipeline
+        .enabled,
+    ).toBe(false);
+    expect(
+      loadConfig({ ...valid, ANTHROPIC_API_KEY: "k", LLM_MODEL: "claude-sonnet-5-5" })
+        .pipeline.llm,
+    ).toMatchObject({ model: "claude-sonnet-5-5" });
+  });
+
+  test("the fake model is for development only, and anthropic needs its key", () => {
+    expect(loadConfig({ ...valid, LLM_DRIVER: "fake" }).pipeline).toMatchObject({
+      llm: { driver: "fake" },
+      enabled: true,
+    });
+    expect(
+      problemsFor({
+        ...valid,
+        NODE_ENV: "production",
+        RUNNER_PROVIDER: "http",
+        RUNNER_URL: "http://runner:8798",
+        RUNNER_TOKEN: SECRET,
+        LLM_DRIVER: "fake",
+      }),
+    ).toEqual([
+      "LLM_DRIVER cannot be fake in production: it writes the same demonstration paper every time",
+    ]);
+    expect(problemsFor({ ...valid, LLM_DRIVER: "anthropic" })).toEqual([
+      "ANTHROPIC_API_KEY is required when LLM_DRIVER is anthropic",
+    ]);
+  });
+
+  test("reads the limits and checks the step range", () => {
+    const { limits } = loadConfig({
+      ...valid,
+      PIPELINE_MAX_PDF_MB: "10",
+      PIPELINE_INGESTIONS_PER_DAY: "3",
+      PIPELINE_OUTPUT_TOKEN_BUDGET: "1000",
+    }).pipeline;
+    expect(limits).toMatchObject({
+      maxPdfBytes: 10 * 1024 * 1024,
+      ingestionsPerDay: 3,
+      outputTokenBudget: 1000,
+    });
+    expect(
+      problemsFor({ ...valid, PIPELINE_MIN_STEPS: "8", PIPELINE_MAX_STEPS: "5" }),
+    ).toEqual(["PIPELINE_MIN_STEPS must not be more than PIPELINE_MAX_STEPS"]);
   });
 });

@@ -3,6 +3,7 @@ import { createDb, type Database } from "@repo/db";
 import type { SandboxProvider } from "@repo/runner";
 import { FsStorage } from "@repo/storage";
 import { avatarStoreOver, type AvatarStore } from "../src/adapters/avatar-store";
+import type { Pipeline } from "../src/adapters/pipeline";
 import type { EmailMessage, EmailSender } from "../src/adapters/email/types";
 import { createApp } from "../src/create-app";
 import type { AppConfig } from "../src/env";
@@ -16,6 +17,18 @@ export const TEST_AUTH_SECRET = "test-secret-test-secret-test-secret";
  * connection is opened until a query runs, and none should.
  */
 const UNUSED_DATABASE_URL = "postgres://unused:unused@127.0.0.1:1/unused";
+
+/** The default pipeline limits (docs/specs/09-paper-pipeline.md §18). */
+export const TEST_PIPELINE_LIMITS = {
+  maxPdfBytes: 30 * 1024 * 1024,
+  maxPdfPages: 60,
+  minSteps: 4,
+  maxSteps: 12,
+  writeAttempts: 3,
+  concurrentIngestions: 2,
+  ingestionsPerDay: 10,
+  outputTokenBudget: 600_000,
+};
 
 export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   env: "test",
@@ -45,6 +58,7 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
     trustedProxies: [],
   },
   email: { driver: "none" },
+  pipeline: { llm: null, enabled: false, limits: TEST_PIPELINE_LIMITS },
   ...overrides,
 });
 
@@ -89,6 +103,7 @@ export interface TestAppOptions {
   email?: EmailSender | null;
   sandbox?: SandboxProvider;
   avatarStore?: AvatarStore;
+  pipeline?: Pipeline | null;
 }
 
 /** Avatars kept in memory, served by the API as with the fs driver. */
@@ -113,6 +128,9 @@ export function memoryAvatarStore(): AvatarStore & { objects: Map<string, Uint8A
         throw new Error("not used");
       },
       async head() {
+        throw new Error("not used");
+      },
+      async presignPut() {
         throw new Error("not used");
       },
       async put(key, body) {
@@ -151,6 +169,7 @@ export function createTestApp(
     email = null,
     sandbox = unusedSandbox,
     avatarStore = memoryAvatarStore(),
+    pipeline = null,
   }: Omit<TestAppOptions, "content"> = {},
 ) {
   const logs: CapturedLog[] = [];
@@ -168,6 +187,7 @@ export function createTestApp(
     email,
     sandbox,
     avatarStore,
+    pipeline,
     runInBackground: (task) => {
       background.push(task);
     },

@@ -17,7 +17,8 @@ function limit(maxBytes: number) {
 
 /**
  * Rejects bodies over `maxBytes` with the standard `payload_too_large` error.
- * `uploads` raises the limit for named paths that accept a file.
+ * `uploads` raises the limit for named paths that accept a file; a key ending
+ * in `/*` covers every path under it.
  */
 export function limitBody(
   maxBytes: number = MAX_JSON_BODY_BYTES,
@@ -27,7 +28,12 @@ export function limitBody(
   const raised = new Map(
     Object.entries(uploads).map(([path, max]) => [path, limit(max)]),
   );
-  return createMiddleware<AppEnv>((c, next) =>
-    (raised.get(c.req.path) ?? fallback)(c, next),
-  );
+  const prefixes = [...raised.entries()]
+    .filter(([path]) => path.endsWith("/*"))
+    .map(([path, middleware]) => [path.slice(0, -1), middleware] as const);
+  return createMiddleware<AppEnv>((c, next) => {
+    const exact = raised.get(c.req.path);
+    const prefixed = prefixes.find(([prefix]) => c.req.path.startsWith(prefix))?.[1];
+    return (exact ?? prefixed ?? fallback)(c, next);
+  });
 }

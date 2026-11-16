@@ -6,6 +6,7 @@ export {
   type Transaction,
 } from "./client";
 export { createAdvisoryLock, type AdvisoryLock } from "./advisory-lock";
+export { isUniqueViolation } from "./errors";
 export { MIGRATIONS_DIR, migrateDatabase } from "./migrations";
 export * as schema from "./schema";
 export type { StoredSubmissionResult } from "./schema";

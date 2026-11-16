@@ -26,12 +26,12 @@ continues after the `202`; the browser polls `GET /v1/submissions/:id`.
 
 ## Entry points
 
-| File            | Used by                                                                                                             |
-| --------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `src/main.ts`   | Local development and self-hosting: starts `Bun.serve`, shuts down gracefully on SIGTERM.                           |
-| `src/index.ts`  | Serverless hosts: default-exports the app. `vercel.json` selects the Bun runtime, `maxDuration` and the daily cron. |
-| `src/worker.ts` | Self-hosting (`bun run worker`): the daily cleanup. Serverless uses `/api/internal/cron/cleanup` instead.           |
-| `Dockerfile`    | The image for `backend` and `worker` in `docker-compose.yml`.                                                       |
+| File            | Used by                                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`   | Local development and self-hosting: starts `Bun.serve`, shuts down gracefully on SIGTERM.                             |
+| `src/index.ts`  | Serverless hosts: default-exports the app. `vercel.json` selects the Bun runtime, `maxDuration` and the daily cron.   |
+| `src/worker.ts` | Self-hosting (`bun run worker`): the daily cleanup and the pipeline's task queue. Serverless uses the internal crons. |
+| `Dockerfile`    | The image for `backend` and `worker` in `docker-compose.yml`.                                                         |
 
 Both build the same app with `createApp()` in `src/create-app.ts`.
 
@@ -44,8 +44,8 @@ Both build the same app with `createApp()` in `src/create-app.ts`.
 | `src/routes/`       | One router per resource. Validate input, call a service, shape the response.                                                     |
 | `src/auth/`         | Better Auth's configuration, and the options that shape its tables.                                                              |
 | `src/services/`     | Business logic: content catalogue, accounts and roles, submissions, cleanup, rate limiter, email templates.                      |
-| `src/adapters/`     | Wiring to storage, email and the sandbox: the read-only content store, the email drivers, `createSandboxProvider`.               |
-| `src/cli/`          | `content:sync`, `content:export`, `content:status`, `admin:grant`, `admin:password`.                                             |
+| `src/adapters/`     | Wiring to storage, email, the sandbox and the model: the email drivers, `createSandboxProvider`, `createPipeline`, `llm.ts`.     |
+| `src/cli/`          | `content:*`, `admin:grant`, `admin:password`, and the pipeline's `paper:ingest`, `paper:status`, `paper:publish`, `paper:eval`.  |
 | `src/middleware/`   | Request context, logging, cache policy, body limit, error envelope, session, guards.                                             |
 | `scripts/`          | `auth:schema`: regenerates `packages/db/src/schema/auth.ts` from Better Auth.                                                    |
 | `src/lib/`          | `AppError` and `validate()` for request input. The JSON logger is `@repo/shared/logger`.                                         |
@@ -67,4 +67,24 @@ Both build the same app with `createApp()` in `src/create-app.ts`.
 bun run admin:grant <email> <user|maintainer|admin>   # refuses to demote the last admin
 echo 'new password' | bun run admin:password <email>  # for instances without email
 bun run auth:schema && bun run db:generate             # after changing src/auth/schema-options.ts
+```
+
+## Paper pipeline
+
+`@repo/pipeline` holds the engine and the stages; this app wires them up
+(docs/specs/09-paper-pipeline.md):
+
+- `src/adapters/llm.ts` is the only file that imports `@anthropic-ai/sdk`. `LLM_DRIVER=fake`
+  swaps in the scripted model that writes a demonstration paper.
+- `src/adapters/pipeline.ts` builds the pipeline; `createPipeline` returns null without a
+  model, and every `/v1/admin/ingestions` endpoint is then not found.
+- Ticks run in the worker (polling every 2 s), in `main.ts` after an upload, and on
+  serverless from `/api/internal/cron/pipeline` (every minute, and handed from one
+  invocation to the next while work remains).
+
+```sh
+bun run paper:ingest <file.pdf|arxiv:ID> --confirm-rights [--wait] [--pause-after-plan]
+bun run paper:status [<ingestion-id>]
+bun run paper:publish <ingestion-id> --by <email>
+bun run paper:eval [--set <papers.json>] [--fresh] [--out report.json]   # spends real money
 ```

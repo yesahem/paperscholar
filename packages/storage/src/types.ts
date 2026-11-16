@@ -26,6 +26,22 @@ export interface PutResult {
   etag: string;
 }
 
+/** A URL a browser can write one object to directly, with the headers it must send. */
+export interface PresignedUpload {
+  url: string;
+  method: "PUT";
+  /** Signed: the upload must send exactly these, so a different size or type is refused. */
+  headers: Record<string, string>;
+  expiresAt: Date;
+}
+
+export interface PresignOptions {
+  contentType: string;
+  /** Exact size in bytes; signed into the URL. */
+  contentLength: number;
+  expiresInSeconds: number;
+}
+
 /** Outcome of a conditional read. */
 export type ConditionalGetResult =
   | { status: "found"; object: StoredObject }
@@ -53,4 +69,9 @@ export interface ObjectStorage {
   delete(key: string): Promise<void>;
   /** Every object whose key starts with `prefix`, in key order. */
   list(prefix: string): AsyncIterable<ObjectInfo>;
+  /**
+   * A presigned PUT for one object, or null when the driver cannot issue one
+   * (`fs`, whose files only the API can write).
+   */
+  presignPut(key: string, options: PresignOptions): Promise<PresignedUpload | null>;
 }

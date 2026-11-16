@@ -3,7 +3,6 @@ import { createAuth } from "../../src/auth/auth";
 import { silentLogger } from "@repo/shared/logger";
 import {
   createAccounts,
-  isUniqueViolation,
   LastAdminError,
   nextUsernameChange,
 } from "../../src/services/accounts";
@@ -18,14 +17,6 @@ describe("nextUsernameChange", () => {
     expect(nextUsernameChange(new Date("2026-01-01T00:00:00Z"))?.toISOString()).toBe(
       "2026-01-31T00:00:00.000Z",
     );
-  });
-});
-
-describe("isUniqueViolation", () => {
-  test("finds SQLSTATE 23505 anywhere in the cause chain", () => {
-    const pg = Object.assign(new Error("duplicate key"), { errno: "23505" });
-    expect(isUniqueViolation(new Error("query failed", { cause: pg }))).toBe(true);
-    expect(isUniqueViolation(new Error("other"))).toBe(false);
   });
 });
 

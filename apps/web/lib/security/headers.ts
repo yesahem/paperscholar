@@ -14,11 +14,14 @@ export interface PolicyOptions {
   development: boolean;
   /** Where avatars are served from when not this site (the R2 public bucket). */
   avatarOrigin?: string;
+  /** Where maintainers' browsers upload PDFs directly (the R2 S3 endpoint), if anywhere. */
+  uploadOrigin?: string;
 }
 
 export function contentSecurityPolicy({
   development,
   avatarOrigin,
+  uploadOrigin,
 }: PolicyOptions): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
@@ -33,7 +36,11 @@ export function contentSecurityPolicy({
     // blob: shows an avatar chosen for upload before it is sent.
     "img-src": ["'self'", "data:", "blob:", ...(avatarOrigin ? [avatarOrigin] : [])],
     "font-src": ["'self'", "data:"],
-    "connect-src": ["'self'", ...(development ? ["ws:"] : [])],
+    "connect-src": [
+      "'self'",
+      ...(uploadOrigin ? [uploadOrigin] : []),
+      ...(development ? ["ws:"] : []),
+    ],
     "worker-src": ["'self'", "blob:"],
     "frame-ancestors": ["'none'"],
     "base-uri": ["'self'"],

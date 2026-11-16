@@ -58,7 +58,7 @@ describe("private-content canary", () => {
   });
 });
 
-const python = process.env.RUNNER_PYTHON ?? defaultLocalPythonPath();
+const python = process.env.RUNNER_PYTHON || defaultLocalPythonPath();
 const hasPython = Bun.spawnSync([python, "-c", "import numpy, pytest"]).exitCode === 0;
 
 describe.skipIf(!DATABASE_URL || !hasPython)(

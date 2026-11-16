@@ -1,11 +1,13 @@
-import type { ContentStore } from "@repo/content";
-import type { Database } from "@repo/db";
+import { CONTENT_INDEX_LOCK, ContentStore } from "@repo/content";
+import { createAdvisoryLock, type Database } from "@repo/db";
+import { createStorage } from "@repo/storage";
 import type { SandboxProvider } from "@repo/runner";
 import { AVATAR_MAX_BYTES } from "@repo/shared";
 import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import type { AvatarStore } from "./adapters/avatar-store";
+import type { Pipeline } from "./adapters/pipeline";
 import type { EmailSender } from "./adapters/email/types";
 import { createAuth } from "./auth/auth";
 import { verifiesEmail, type AppConfig } from "./env";
@@ -19,6 +21,9 @@ import { originCheck } from "./middleware/origin-check";
 import { requestContext } from "./middleware/request-context";
 import { requestLogger } from "./middleware/request-logger";
 import { session } from "./middleware/session";
+import { adminIngestionRoutes } from "./routes/admin/ingestions";
+import { adminPaperRoutes } from "./routes/admin/papers";
+import { adminUserRoutes } from "./routes/admin/users";
 import { authRoutes } from "./routes/auth";
 import { avatarRoutes } from "./routes/avatars";
 import { configRoutes } from "./routes/config";
@@ -35,7 +40,9 @@ import { usersRoutes } from "./routes/users";
 import { createAccounts } from "./services/accounts";
 import { createAvatars } from "./services/avatars";
 import { runCleanup } from "./services/cleanup";
+import { createAdminPapers } from "./services/admin-papers";
 import { createContentCatalog } from "./services/content-catalog";
+import { createIngestions, PDF_UPLOAD_PATH_PREFIX } from "./services/ingestions";
 import { instanceConfig } from "./services/instance-config";
 import { createLeaderboard } from "./services/leaderboard";
 import { createProfiles } from "./services/profiles";
@@ -56,6 +63,8 @@ export interface AppDependencies {
   sandbox: SandboxProvider;
   /** Where avatars are kept (`createAvatarStore`). */
   avatarStore: AvatarStore;
+  /** The paper pipeline (`createPipeline`); null when the instance has no model. */
+  pipeline: Pipeline | null;
   /**
    * Keeps work going after the response is sent. Serverless hosts must keep
    * the function alive for it (`waitUntil`); a long-running server need not.
@@ -75,6 +84,7 @@ export function createApp({
   email,
   sandbox,
   avatarStore,
+  pipeline,
   runInBackground,
 }: AppDependencies) {
   const app = new Hono<AppEnv>();
@@ -86,8 +96,12 @@ export function createApp({
     requestLogger(),
     secureHeaders(),
     defaultCacheControl(),
-    // The avatar upload carries a 2 MB image and its multipart framing.
-    limitBody(undefined, { [AVATAR_UPLOAD_PATH]: AVATAR_MAX_BYTES + 64 * 1024 }),
+    // The avatar upload carries a 2 MB image and its multipart framing; a PDF
+    // upload through the API (fs storage) carries the paper.
+    limitBody(undefined, {
+      [AVATAR_UPLOAD_PATH]: AVATAR_MAX_BYTES + 64 * 1024,
+      [`${PDF_UPLOAD_PATH_PREFIX}*`]: config.pipeline.limits.maxPdfBytes,
+    }),
   );
 
   app.onError(createErrorHandler(logger));
@@ -113,6 +127,22 @@ export function createApp({
     dispatch: (id) => runInBackground(submissions.execute(id)),
   });
 
+  const ingestions = pipeline
+    ? createIngestions({
+        deps: pipeline.deps,
+        kick: (origin) => pipeline.runner.kick(origin),
+      })
+    : null;
+
+  // Status changes write content/index.json under the database's advisory lock.
+  const contentWriter =
+    pipeline?.deps.content ??
+    new ContentStore({
+      storage: createStorage(config.storage),
+      lock: createAdvisoryLock(db, CONTENT_INDEX_LOCK),
+    });
+  const adminPapers = createAdminPapers({ db, content: contentWriter });
+
   const v1 = new Hono<AppEnv>()
     .use(
       originCheck(config.webOrigin),
@@ -121,6 +151,9 @@ export function createApp({
     )
     // Maintainer and admin routes (M6) are invisible to everyone else.
     .use("/admin/*", requireRole("maintainer", accounts.currentRole))
+    .route("/admin/ingestions", adminIngestionRoutes(ingestions))
+    .route("/admin/papers", adminPaperRoutes(adminPapers))
+    .route("/admin/users", adminUserRoutes(accounts))
     .route("/papers", papersRoutes(catalog))
     .route("/tracks", tracksRoutes(catalog))
     .route("/config", configRoutes(instanceConfig(config)))
@@ -148,9 +181,10 @@ export function createApp({
     .route("/auth", authRoutes(auth, config.webOrigin))
     .route(
       "/internal",
-      internalRoutes(config.internalSecret, () =>
-        runCleanup({ db, submissions, logger }),
-      ),
+      internalRoutes(config.internalSecret, {
+        cleanup: () => runCleanup({ db, submissions, logger }),
+        pipeline: pipeline?.runner ?? null,
+      }),
     )
     .route("/v1", v1);
 

@@ -83,6 +83,29 @@ export const paperPrivateDocSchema = z.object({
 });
 export type PaperPrivateDoc = z.infer<typeof paperPrivateDocSchema>;
 
+/**
+ * `content/papers/<id>/draft/public.json`: a paper not yet published, as the
+ * pipeline assembled it or a maintainer last edited it. Not cached.
+ */
+export const paperDraftPublicDocSchema = z.object({
+  schemaVersion: z.literal(1),
+  paperId: slugSchema,
+  /** The ingestion that produced it; null for a draft made by hand. */
+  ingestionId: z.uuid().nullable(),
+  updatedAt: isoTimestamp,
+  paper: paperMetadataSchema,
+  problems: z.array(storedProblemPublicSchema),
+});
+export type PaperDraftPublicDoc = z.infer<typeof paperDraftPublicDocSchema>;
+
+/** `content/papers/<id>/draft/private.json` */
+export const paperDraftPrivateDocSchema = z.object({
+  schemaVersion: z.literal(1),
+  paperId: slugSchema,
+  problems: z.array(storedProblemPrivateSchema),
+});
+export type PaperDraftPrivateDoc = z.infer<typeof paperDraftPrivateDocSchema>;
+
 export const indexProblemSchema = storedProblemPublicSchema.pick({
   id: true,
   order: true,

@@ -1,10 +1,21 @@
-import { and, count, eq, ne, schema, type Database } from "@repo/db";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  isUniqueViolation,
+  ne,
+  schema,
+  sql,
+  type Database,
+} from "@repo/db";
 import {
   normaliseUsername,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   roleSchema,
   USERNAME_CHANGE_INTERVAL_DAYS,
+  type AdminUser,
   type Me,
   type Role,
 } from "@repo/shared";
@@ -30,15 +41,6 @@ export interface AccountsDependencies {
   avatars: Pick<AvatarStore, "url" | "delete">;
   logger: Logger;
   now?: () => Date;
-}
-
-/** Postgres reports a unique-constraint violation with SQLSTATE 23505. */
-export function isUniqueViolation(error: unknown): boolean {
-  for (let current = error; current instanceof Error; current = current.cause) {
-    const fields = current as Error & { errno?: unknown; code?: unknown };
-    if (fields.errno === "23505" || fields.code === "23505") return true;
-  }
-  return false;
 }
 
 /** When a username last changed at `changedAt` may change again. */
@@ -222,6 +224,37 @@ export function createAccounts({
     },
 
     currentRole,
+
+    /**
+     * Accounts whose username or email starts with `query`, newest first, for
+     * the admin's roles screen. Empty query: the newest accounts.
+     */
+    async listUsers(query: string, limit = 50): Promise<AdminUser[]> {
+      const prefix = query.toLowerCase();
+      const rows = await db
+        .select({
+          id: schema.user.id,
+          username: schema.user.username,
+          email: schema.user.email,
+          role: schema.user.role,
+          createdAt: schema.user.createdAt,
+        })
+        .from(schema.user)
+        .where(
+          prefix === ""
+            ? undefined
+            : sql`(starts_with(${schema.user.username}, ${prefix}) or starts_with(lower(${schema.user.email}), ${prefix}))`,
+        )
+        .orderBy(desc(schema.user.createdAt))
+        .limit(limit);
+      return rows.map((row) => ({
+        id: row.id,
+        username: row.username ?? "",
+        email: row.email,
+        role: roleSchema.catch("user").parse(row.role),
+        createdAt: row.createdAt.toISOString(),
+      }));
+    },
 
     /**
      * Changes a user's role (docs/specs/06-auth.md §9). Refuses to demote the

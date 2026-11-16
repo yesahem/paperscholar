@@ -9,9 +9,11 @@ import { verifiesEmail, type AppConfig } from "../env";
  * builds it (docs/specs/12-milestones.md); until then it is reported as off,
  * so the web app never links to a screen that does not exist.
  */
-export function featureFlags(config: Pick<AppConfig, "auth" | "email">): FeatureFlags {
+export function featureFlags(
+  config: Pick<AppConfig, "auth" | "email" | "pipeline">,
+): FeatureFlags {
   return {
-    pipeline: false,
+    pipeline: config.pipeline.enabled,
     coldMail: false,
     interview: false,
     courses: false,

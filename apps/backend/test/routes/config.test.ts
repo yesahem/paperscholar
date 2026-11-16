@@ -1,7 +1,7 @@
 import { FEATURES, instanceConfigSchema, MAX_CODE_BYTES } from "@repo/shared";
 import { describe, expect, test } from "bun:test";
 import { PUBLIC_CONTENT_CACHE_CONTROL } from "../../src/middleware/public-cache";
-import { createTestApp, testConfig } from "../helpers";
+import { createTestApp, TEST_PIPELINE_LIMITS, testConfig } from "../helpers";
 
 const ACCOUNT_FEATURES = new Set<string>([
   "signups",
@@ -32,6 +32,23 @@ describe("GET /api/v1/config", () => {
     );
     for (const feature of FEATURES.filter((name) => !ACCOUNT_FEATURES.has(name))) {
       expect(features[feature]).toBe(false);
+    }
+  });
+
+  test("the pipeline is on when the instance has a model and has not switched it off", async () => {
+    const pipeline = (enabled: boolean) =>
+      createTestApp({
+        pipeline: {
+          llm: { driver: "anthropic", apiKey: "sk-test", model: "claude-opus-5-5" },
+          enabled,
+          limits: TEST_PIPELINE_LIMITS,
+        },
+      }).app;
+    for (const enabled of [true, false]) {
+      const { features } = instanceConfigSchema.parse(
+        await (await pipeline(enabled).request("/api/v1/config")).json(),
+      );
+      expect(features.pipeline).toBe(enabled);
     }
   });
 

@@ -5,6 +5,8 @@ import type {
   ConditionalGetResult,
   ObjectInfo,
   ObjectStorage,
+  PresignedUpload,
+  PresignOptions,
   PutOptions,
   PutResult,
   StoredObject,
@@ -184,6 +186,33 @@ export class S3Storage implements ObjectStorage {
     const etag = response.headers.get("etag");
     if (!etag) throw new StorageError(`No etag returned for ${key}`, { key });
     return { etag };
+  }
+
+  /**
+   * Signs a PUT into the URL's query string. Content-Type and Content-Length
+   * are signed too, so the service refuses an upload of another size or type.
+   */
+  async presignPut(
+    key: string,
+    options: PresignOptions,
+  ): Promise<PresignedUpload | null> {
+    const url = new URL(this.objectUrl(key));
+    url.searchParams.set("X-Amz-Expires", String(options.expiresInSeconds));
+    const headers = {
+      "content-type": options.contentType,
+      "content-length": String(options.contentLength),
+    };
+    const signed = await this.client.sign(url.href, {
+      method: "PUT",
+      headers,
+      aws: { signQuery: true, allHeaders: true },
+    });
+    return {
+      url: signed.url,
+      method: "PUT",
+      headers,
+      expiresAt: new Date(Date.now() + options.expiresInSeconds * 1000),
+    };
   }
 
   async delete(key: string): Promise<void> {

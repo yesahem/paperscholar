@@ -13,6 +13,8 @@ export {
 export {
   contentIndexSchema,
   indexEntrySchema,
+  paperDraftPrivateDocSchema,
+  paperDraftPublicDocSchema,
   paperMetadataSchema,
   paperPrivateDocSchema,
   paperPublicDocSchema,
@@ -22,6 +24,8 @@ export {
   type ContentIndex,
   type IndexEntry,
   type IndexProblem,
+  type PaperDraftPrivateDoc,
+  type PaperDraftPublicDoc,
   type PaperMetadata,
   type PaperPrivateDoc,
   type PaperPublicDoc,
@@ -41,6 +45,8 @@ export {
 export {
   ContentStore,
   type ContentStoreOptions,
+  type DraftInput,
+  type PaperDraft,
   type PublishInput,
 } from "./store/content-store";
 export {
@@ -49,7 +55,12 @@ export {
   ContentNotFoundError,
   ContentReadOnlyError,
 } from "./store/errors";
-export { CONTENT_INDEX_KEY, paperVersionKey, TRACKS_KEY } from "./store/keys";
+export {
+  CONTENT_INDEX_KEY,
+  paperDraftKey,
+  paperVersionKey,
+  TRACKS_KEY,
+} from "./store/keys";
 export {
   CONTENT_INDEX_LOCK,
   createProcessLock,

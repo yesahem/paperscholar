@@ -6,6 +6,7 @@ import {
   gte,
   inArray,
   isNull,
+  isUniqueViolation,
   lt,
   ne,
   or,
@@ -34,7 +35,6 @@ import type { Logger } from "@repo/shared/logger";
 import type { LimitsConfig } from "../env";
 import { decodeCursor, encodeCursor } from "../lib/cursor";
 import { AppError } from "../lib/errors";
-import { isUniqueViolation } from "./accounts";
 import { recordFinished } from "./progress";
 import type { RateLimiter } from "./rate-limiter";
 
