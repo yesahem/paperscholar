@@ -11,6 +11,6 @@ export default defineConfig({
   strict: true,
   verbose: true,
   dbCredentials: {
-    url: process.env.DATABASE_URL_DIRECT ?? process.env.DATABASE_URL ?? "",
+    url: process.env.DATABASE_URL_DIRECT || process.env.DATABASE_URL || "",
   },
 });
