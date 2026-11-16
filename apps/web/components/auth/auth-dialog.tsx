@@ -3,7 +3,7 @@
 import { Dialog } from "@repo/ui/components/dialog";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { useRefreshMe } from "@/lib/queries";
+import { useRefreshMe } from "@repo/web-core/queries/session";
 import { SignInForm } from "./sign-in-form";
 import { SignUpForm } from "./sign-up-form";
 

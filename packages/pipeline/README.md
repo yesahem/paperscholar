@@ -14,7 +14,7 @@ backend supplies the Anthropic client.
 | `stages/`                     | `read`, `plan` (and add-step), `write` (with repairs), `verify` (V1–V10), `assemble`         |
 | `stages/model-checks.ts`      | V7 mutants, V8 independent solve, V9 fidelity                                                |
 | `review.ts`                   | Edits, re-verification, regeneration, waivers, publish, cancel, retry, discard (§10–§12)     |
-| `eval.ts`                     | The measures of §18 for `paper:eval`                                                         |
+| `eval.ts`                     | The measures of §18, used by the CMS eval                                                    |
 | `llm/types.ts`, `llm/fake.ts` | The `LlmClient` interface and the scripted fake; `llm/demo-paper.ts` is what the fake writes |
 | `prompts/`                    | One file per stage, versioned by `PROMPT_VERSION` in `prompts.ts`                            |
 
@@ -23,7 +23,7 @@ assembled, as the paper's draft. The database holds only state: `ingestions`,
 `ingestion_steps`, `pipeline_tasks`.
 
 Changing a prompt is a code change: bump `PROMPT_VERSION` and run the eval
-(`bun run paper:eval`, which spends real money) before merging.
+(an admin starts it in the CMS; it spends real money) before merging.
 
 ## `verifyProblem(problem, { provider })`
 

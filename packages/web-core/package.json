@@ -1,0 +1,57 @@
+{
+  "name": "@repo/web-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "description": "What apps/web and apps/cms share: API client and errors, session hooks, security headers, theme, load and empty states, the test list and the Monaco editor.",
+  "exports": {
+    "./api/client": "./src/api/client.ts",
+    "./api/errors": "./src/api/errors.ts",
+    "./auth/auth-api": "./src/auth/auth-api.ts",
+    "./auth/messages": "./src/auth/messages.ts",
+    "./auth/redirect": "./src/auth/redirect.ts",
+    "./auth/schemas": "./src/auth/schemas.ts",
+    "./auth/use-auth-form": "./src/auth/use-auth-form.ts",
+    "./editor/code-editor": "./src/editor/code-editor.tsx",
+    "./queries/session": "./src/queries/session.ts",
+    "./results/format": "./src/results/format.ts",
+    "./results/test-list": "./src/results/test-list.tsx",
+    "./security/headers": "./src/security/headers.ts",
+    "./states/empty-state": "./src/states/empty-state.tsx",
+    "./states/load-error": "./src/states/load-error.tsx",
+    "./theme/theme": "./src/theme/theme.ts",
+    "./theme/theme-store": "./src/theme/theme-store.ts",
+    "./theme/theme-toggle": "./src/theme/theme-toggle.tsx"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit && tsc --noEmit -p test",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "4.7.0",
+    "@repo/shared": "*",
+    "@repo/ui": "*",
+    "@tanstack/react-query": "5.104.0",
+    "lucide-react": "1.72.0",
+    "monaco-editor": "0.57.0",
+    "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/bun": "1.3.14",
+    "@types/node": "26.4.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "eslint": "10.9.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "typescript": "7.0.2"
+  }
+}

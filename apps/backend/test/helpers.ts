@@ -34,6 +34,7 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   env: "test",
   port: 8797,
   webOrigin: "http://localhost:3000",
+  cmsOrigin: null,
   logLevel: "debug",
   version: "test-version",
   databaseUrl: UNUSED_DATABASE_URL,

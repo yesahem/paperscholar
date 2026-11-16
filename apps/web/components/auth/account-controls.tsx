@@ -10,25 +10,20 @@ import {
 import { Avatar } from "@repo/ui/components/avatar";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { hasRole } from "@repo/shared/accounts";
-import {
-  ChevronDown,
-  FileUp,
-  Library,
-  LogOut,
-  Settings,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
+import { ChevronDown, ExternalLink, LogOut, Settings, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { signOut } from "@/lib/auth/auth-api";
-import { useInstanceConfig, useMe, useRefreshMe } from "@/lib/queries";
+import { signOut } from "@repo/web-core/auth/auth-api";
+import { useMe, useRefreshMe } from "@repo/web-core/queries/session";
 import { useAuthDialog } from "./auth-dialog";
 
-/** The header's account area: a sign-in button, or the signed-in user's menu. */
-export function AccountControls() {
+/**
+ * The header's account area: a sign-in button, or the signed-in user's menu.
+ * `cmsUrl` is the CMS's address, when this instance has one; maintainers get a
+ * link to it (docs/specs/14-cms.md §3).
+ */
+export function AccountControls({ cmsUrl }: { cmsUrl: string | null }) {
   const me = useMe();
-  const config = useInstanceConfig();
   const dialog = useAuthDialog();
   const refreshMe = useRefreshMe();
   const router = useRouter();
@@ -46,7 +41,6 @@ export function AccountControls() {
 
   const { username, role } = me.data;
   const maintainer = hasRole(role, "maintainer");
-  const pipeline = config.data?.features.pipeline === true;
 
   async function leave() {
     setSignOutFailed(false);
@@ -96,25 +90,13 @@ export function AccountControls() {
           <Settings aria-hidden="true" />
           Settings
         </DropdownMenuItem>
-        {maintainer ? (
+        {maintainer && cmsUrl ? (
           <>
             <DropdownMenuSeparator />
-            {pipeline ? (
-              <DropdownMenuItem onSelect={() => router.push("/admin/papers/new")}>
-                <FileUp aria-hidden="true" />
-                Upload paper
-              </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem onSelect={() => router.push("/admin/papers")}>
-              <Library aria-hidden="true" />
-              Manage papers
+            <DropdownMenuItem onSelect={() => window.location.assign(cmsUrl)}>
+              <ExternalLink aria-hidden="true" />
+              Open CMS
             </DropdownMenuItem>
-            {hasRole(role, "admin") ? (
-              <DropdownMenuItem onSelect={() => router.push("/admin/users")}>
-                <ShieldCheck aria-hidden="true" />
-                Roles
-              </DropdownMenuItem>
-            ) : null}
           </>
         ) : null}
         <DropdownMenuSeparator />

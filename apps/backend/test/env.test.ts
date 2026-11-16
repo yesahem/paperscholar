@@ -30,12 +30,29 @@ function problemsFor(source: Record<string, string | undefined>): string[] {
   throw new Error("expected loadConfig to throw");
 }
 
+describe("loadConfig: the CMS origin", () => {
+  test("is optional and read as an origin", () => {
+    expect(loadConfig(valid).cmsOrigin).toBeNull();
+    expect(loadConfig({ ...valid, CMS_ORIGIN: "http://localhost:3001/" }).cmsOrigin).toBe(
+      "http://localhost:3001",
+    );
+    expect(loadConfig({ ...valid, CMS_ORIGIN: "" }).cmsOrigin).toBeNull();
+  });
+
+  test("a bad value names the variable", () => {
+    expect(problemsFor({ ...valid, CMS_ORIGIN: "not a url" }).join("\n")).toContain(
+      "CMS_ORIGIN",
+    );
+  });
+});
+
 describe("loadConfig", () => {
   test("applies defaults for optional variables", () => {
     expect(loadConfig(valid)).toEqual({
       env: "development",
       port: DEFAULT_PORT,
       webOrigin: "http://localhost:3000",
+      cmsOrigin: null,
       logLevel: "info",
       version: "dev",
       databaseUrl: DATABASE_URL,

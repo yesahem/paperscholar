@@ -633,9 +633,9 @@ export function demoPaperAnswers(
 }
 
 /**
- * A one-page PDF to feed the demo paper through intake, as `bun run
- * paper:ingest --demo` does. `seed` changes its bytes, and so its hash, so
- * several demo ingestions can exist at once.
+ * A one-page PDF to feed the demo paper through intake, for tests (the fake
+ * model writes the demo paper for any PDF). `seed` changes its bytes, and so
+ * its hash, so several demo ingestions can exist at once.
  */
 export function demoPdf(seed = "demo"): Uint8Array {
   const text = `Linear Classifiers from Scratch (${seed.replace(/[()\\]/g, "")})`;

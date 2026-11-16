@@ -13,7 +13,7 @@ import {
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import type { z } from "zod";
 import { loadWebEnv } from "@/lib/env";
-import { ApiError } from "./errors";
+import { ApiError } from "@repo/web-core/api/errors";
 import { fetchJson } from "./fetch-json";
 
 /**

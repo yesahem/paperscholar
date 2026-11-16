@@ -66,6 +66,8 @@ const envSchema = z
       .max(65535, "must be between 1 and 65535")
       .default(DEFAULT_PORT),
     WEB_ORIGIN: httpOriginSchema,
+    /** The CMS's public origin (docs/specs/14-cms.md §3). */
+    CMS_ORIGIN: httpOriginSchema.optional(),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
     APP_VERSION: optionalText,
     VERCEL_GIT_COMMIT_SHA: optionalText,
@@ -526,6 +528,8 @@ export interface AppConfig {
   port: number;
   /** Public origin of the web app. */
   webOrigin: string;
+  /** Public origin of the CMS, or null when this instance has none (docs/specs/14-cms.md §3). */
+  cmsOrigin: string | null;
   logLevel: LogLevel;
   /** Reported by GET /api/health. */
   version: string;
@@ -561,6 +565,7 @@ export function loadConfig(
     env: env.NODE_ENV,
     port: env.PORT,
     webOrigin: env.WEB_ORIGIN,
+    cmsOrigin: env.CMS_ORIGIN ?? null,
     logLevel: env.LOG_LEVEL,
     version: env.APP_VERSION ?? env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "dev",
     databaseUrl: env.DATABASE_URL,

@@ -3,8 +3,8 @@
 import { Button } from "@repo/ui/components/button";
 import { MailWarning } from "lucide-react";
 import { useState } from "react";
-import { AuthRequestError, resendVerificationEmail } from "@/lib/auth/auth-api";
-import { useInstanceConfig, useMe } from "@/lib/queries";
+import { AuthRequestError, resendVerificationEmail } from "@repo/web-core/auth/auth-api";
+import { useInstanceConfig, useMe } from "@repo/web-core/queries/session";
 
 type ResendState = "idle" | "sending" | "sent" | { error: string };
 

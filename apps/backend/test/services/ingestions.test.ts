@@ -33,7 +33,7 @@ describe("toAppError", () => {
 describe.skipIf(!DATABASE_URL)("createIngestions with arXiv", () => {
   const database = useTestDatabase();
 
-  async function service() {
+  async function service(seed = "arxiv-service") {
     const root = await mkdtemp(join(tmpdir(), "ingest-service-"));
     const config = testConfig({
       storage: { driver: "fs", root },
@@ -52,7 +52,7 @@ describe.skipIf(!DATABASE_URL)("createIngestions with arXiv", () => {
     const fetched: string[] = [];
     const fakeFetch = (async (input: string | URL | Request) => {
       fetched.push(String(input instanceof Request ? input.url : input));
-      return new Response(demoPdf("arxiv-service"), {
+      return new Response(demoPdf(seed), {
         headers: { "content-type": "application/pdf" },
       });
     }) as typeof fetch;
@@ -101,15 +101,45 @@ describe.skipIf(!DATABASE_URL)("createIngestions with arXiv", () => {
     expect((await ingestions.get(first.id)).sourceRef).toBe("1706.03762");
   });
 
+  test("every way of writing the same paper is one ingestion, and the newest version is fetched", async () => {
+    const { ingestions, fetched, userId } = await service("forms");
+    const first = await ingestions.create(
+      userId,
+      body("arXiv:2005.14165v5"),
+      "https://api.example.org",
+    );
+    expect(first.created).toBe(true);
+    expect(fetched).toEqual(["https://arxiv.org/pdf/2005.14165"]);
+
+    for (const form of [
+      "2005.14165",
+      "arxiv.org/pdf/2005.14165.pdf",
+      "https://arxiv.org/abs/2005.14165v7?context=cs",
+      "https://export.arxiv.org/abs/2005.14165",
+      "  https://www.arxiv.org/html/2005.14165v1  ",
+    ]) {
+      const again = await ingestions.create(
+        userId,
+        body(form),
+        "https://api.example.org",
+      );
+      expect(again).toEqual({ ...first, created: false });
+    }
+    expect(fetched).toHaveLength(1);
+    expect((await ingestions.get(first.id)).sourceRef).toBe("2005.14165");
+  });
+
   test("refuses something that is not an arXiv id, without fetching", async () => {
     const { ingestions, fetched, userId } = await service();
-    await expect(
-      ingestions.create(
-        userId,
-        body("https://evil.example/paper.pdf"),
-        "https://api.example.org",
-      ),
-    ).rejects.toMatchObject({ code: "validation_error" });
+    for (const input of [
+      "https://evil.example/paper.pdf",
+      "https://evil.example/abs/1706.03762",
+      "https://arxiv.org.evil.example/abs/1706.03762",
+    ]) {
+      await expect(
+        ingestions.create(userId, body(input), "https://api.example.org"),
+      ).rejects.toMatchObject({ code: "validation_error" });
+    }
     expect(fetched).toEqual([]);
   });
 });

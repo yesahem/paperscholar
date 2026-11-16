@@ -1,8 +1,8 @@
 import type { AvatarUploaded, Me, UpdateMe } from "@repo/shared";
 // zod/mini: this module runs in the browser, where the full zod build is too large.
 import * as z from "zod/mini";
-import { meSchema } from "@/lib/auth/schemas";
-import { apiRequest, type CallOptions } from "./client";
+import { meSchema } from "@repo/web-core/auth/schemas";
+import { apiRequest, type CallOptions } from "@repo/web-core/api/client";
 
 /** The signed-in user's own account (docs/specs/05-api.md §7). */
 

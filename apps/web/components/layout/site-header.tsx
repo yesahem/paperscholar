@@ -5,7 +5,8 @@ import { BookOpenText } from "lucide-react";
 import Link from "next/link";
 import { AccountControls } from "@/components/auth/account-controls";
 import { VerificationBanner } from "@/components/auth/verification-banner";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { ThemeToggle } from "@repo/web-core/theme/theme-toggle";
+import { loadWebEnv } from "@/lib/env";
 import { NavLink } from "./nav-link";
 
 const NAVIGATION = [
@@ -62,7 +63,7 @@ export function SiteHeader({ className }: { className?: string }) {
           GitHub
         </a>
         <ThemeToggle />
-        <AccountControls />
+        <AccountControls cmsUrl={loadWebEnv().NEXT_PUBLIC_CMS_URL ?? null} />
       </div>
       <VerificationBanner />
     </header>

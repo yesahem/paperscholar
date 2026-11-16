@@ -17,7 +17,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { useInstanceConfig, useMe } from "@/lib/queries";
+import { useInstanceConfig, useMe } from "@repo/web-core/queries/session";
 import {
   browserDraftStorage,
   draftKey,
@@ -33,7 +33,7 @@ import { SubmissionsPanel } from "./submissions-panel";
 import { isBusy, useRun } from "./use-run";
 
 const CodeEditor = dynamic(
-  () => import("./code-editor").then((module) => module.CodeEditor),
+  () => import("@repo/web-core/editor/code-editor").then((module) => module.CodeEditor),
   { ssr: false },
 );
 

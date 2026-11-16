@@ -143,18 +143,25 @@ export const contentIndexSchema = z.object({
 });
 export type ContentIndex = z.infer<typeof contentIndexSchema>;
 
+/** Who owns a track: the repository's files (`content:sync`) or the CMS (docs/specs/14-cms.md §7). */
+export const trackOriginSchema = z.enum(["library", "cms"]);
+
 export const storedTrackSchema = z.object({
   id: slugSchema,
   title: z.string(),
   summary: z.string(),
   paperIds: z.array(slugSchema),
+  origin: trackOriginSchema.default("library"),
 });
 export type StoredTrack = z.infer<typeof storedTrackSchema>;
 
 /** `content/tracks.json` */
 export const tracksDocSchema = z.object({
   schemaVersion: z.literal(1),
+  /** Hash of the library's tracks at the last sync. */
   sourceHash: z.string(),
+  /** Bumped on every write; a stale editor's save is refused (docs/specs/14-cms.md §7.3). */
+  revision: z.number().int().min(0).default(0),
   tracks: z.array(storedTrackSchema),
 });
 export type TracksDoc = z.infer<typeof tracksDocSchema>;

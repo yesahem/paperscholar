@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRefreshMe } from "@/lib/queries";
+import { useRefreshMe } from "@repo/web-core/queries/session";
 import { SignInForm } from "./sign-in-form";
 import { SignUpForm } from "./sign-up-form";
 

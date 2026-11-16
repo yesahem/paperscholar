@@ -1,9 +1,5 @@
 import { toStoredProblem } from "./build-documents";
-import type {
-  StoredProblemPrivate,
-  StoredProblemPublic,
-  TracksDoc,
-} from "./schemas/stored";
+import type { StoredProblemPrivate, StoredProblemPublic } from "./schemas/stored";
 import type { ContentLibrary, SourcePaper } from "./source/read-library";
 import type { ContentStore } from "./store/content-store";
 
@@ -133,21 +129,16 @@ export async function syncLibrary(
     });
   }
 
-  const tracks: TracksDoc = {
-    schemaVersion: 1,
-    sourceHash: library.tracksHash,
-    tracks: library.tracks.map((track) => ({
+  report.tracks = await store.syncLibraryTracks(
+    library.tracks.map((track) => ({
       id: track.id,
       title: track.meta.title,
       summary: track.meta.summary,
       paperIds: track.meta.papers,
     })),
-  };
-  const existingTracks = await store.getTracks({ fresh: true });
-  if (existingTracks?.sourceHash !== tracks.sourceHash) {
-    report.tracks = existingTracks ? "updated" : "created";
-    if (!dryRun) await store.putTracks(tracks);
-  }
+    library.tracksHash,
+    { dryRun },
+  );
 
   return report;
 }

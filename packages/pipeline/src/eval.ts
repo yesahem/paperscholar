@@ -13,6 +13,18 @@ export const evalSetSchema = z.object({
 });
 export type EvalSet = z.infer<typeof evalSetSchema>;
 
+/**
+ * The project's reference papers (docs/specs/09-paper-pipeline.md §18). Each has
+ * hand-written steps in `content/` to compare with. arXiv sources only: the
+ * eval runs on the server, from the CMS.
+ */
+export const DEFAULT_EVAL_SET: EvalSet = {
+  papers: [
+    { name: "attention-is-all-you-need", source: "arxiv:1706.03762" },
+    { name: "adam", source: "arxiv:1412.6980" },
+  ],
+};
+
 /** The measures of docs/specs/09-paper-pipeline.md §18 for one ingestion. */
 export interface IngestionMeasures {
   ingestionId: string;

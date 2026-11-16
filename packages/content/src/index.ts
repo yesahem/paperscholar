@@ -54,6 +54,7 @@ export {
   ContentCorruptError,
   ContentNotFoundError,
   ContentReadOnlyError,
+  TracksConflictError,
 } from "./store/errors";
 export {
   CONTENT_INDEX_KEY,

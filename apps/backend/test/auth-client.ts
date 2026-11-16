@@ -12,6 +12,8 @@ export class TestBrowser {
   constructor(
     private readonly app: App,
     readonly ip = `198.51.100.${Math.floor(Math.random() * 250) + 1}`,
+    /** The site this browser is on; the CMS's origin for a maintainer's browser. */
+    readonly origin = WEB_ORIGIN,
   ) {}
 
   /** The Cookie header, optionally without some cookies. */
@@ -29,7 +31,7 @@ export class TestBrowser {
     const method = init.method ?? "GET";
     const headers: Record<string, string> = {
       "x-forwarded-for": this.ip,
-      ...(method === "GET" ? {} : { Origin: WEB_ORIGIN }),
+      ...(method === "GET" ? {} : { Origin: this.origin }),
       ...(init.body === undefined ? {} : { "Content-Type": "application/json" }),
       ...(this.cookies.size > 0 ? { Cookie: this.cookieHeader() } : {}),
       ...init.headers,
@@ -49,7 +51,7 @@ export class TestBrowser {
       method,
       headers: {
         "x-forwarded-for": this.ip,
-        Origin: WEB_ORIGIN,
+        Origin: this.origin,
         ...(this.cookies.size > 0 ? { Cookie: this.cookieHeader() } : {}),
       },
       body: form,
@@ -69,7 +71,7 @@ export class TestBrowser {
       method,
       headers: {
         "x-forwarded-for": this.ip,
-        Origin: WEB_ORIGIN,
+        Origin: this.origin,
         "Content-Type": contentType,
         ...(this.cookies.size > 0 ? { Cookie: this.cookieHeader() } : {}),
       },

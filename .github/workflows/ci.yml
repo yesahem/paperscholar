@@ -42,6 +42,7 @@ jobs:
       API_ORIGIN: http://localhost:8797
       WEB_ORIGIN: http://localhost:3000
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_CMS_URL: http://localhost:3001
       S3_TEST_ENDPOINT: http://localhost:54331
       S3_TEST_ACCESS_KEY_ID: ci
       S3_TEST_SECRET_ACCESS_KEY: ci-secret-key

@@ -8,7 +8,7 @@ import { Spinner } from "@repo/ui/components/spinner";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 import { searchUsers } from "@/lib/api/users";
 
 const DEBOUNCE_MS = 250;

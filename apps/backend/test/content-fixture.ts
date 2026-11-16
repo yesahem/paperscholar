@@ -53,6 +53,8 @@ export interface SyncedContent {
   reader: ContentStore;
   /** For changing content during a test, as the commands would. */
   writer: ContentStore;
+  /** The storage's directory, for an app that must write to the same content. */
+  dir: string;
   /** Re-syncs a changed library into the same storage. */
   resync(spec: LibrarySpec): Promise<void>;
   cleanup(): Promise<void>;
@@ -76,6 +78,7 @@ export async function syncedContent(
   await resync(spec);
 
   return {
+    dir,
     reader,
     writer,
     resync,

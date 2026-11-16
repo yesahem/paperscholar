@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import { loadWebEnv } from "./lib/env";
-import { securityHeaders } from "./lib/security/headers";
+import { securityHeaders } from "@repo/web-core/security/headers";
 
 const env = loadWebEnv();
 
@@ -13,12 +13,18 @@ const nextConfig: NextConfig = {
    * (docs/specs/01-architecture.md §4.2).
    */
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${env.API_ORIGIN}/api/:path*`,
-      },
-    ];
+    return {
+      // The maintainer API is reached through the CMS only (docs/specs/14-cms.md §3.5):
+      // here it is the not-found page, before the proxy rule can forward it.
+      beforeFiles: [{ source: "/api/v1/admin/:path*", destination: "/not-found-admin" }],
+      afterFiles: [
+        {
+          source: "/api/:path*",
+          destination: `${env.API_ORIGIN}/api/:path*`,
+        },
+      ],
+      fallback: [],
+    };
   },
   async headers() {
     return [

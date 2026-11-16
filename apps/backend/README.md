@@ -45,7 +45,7 @@ Both build the same app with `createApp()` in `src/create-app.ts`.
 | `src/auth/`         | Better Auth's configuration, and the options that shape its tables.                                                              |
 | `src/services/`     | Business logic: content catalogue, accounts and roles, submissions, cleanup, rate limiter, email templates.                      |
 | `src/adapters/`     | Wiring to storage, email, the sandbox and the model: the email drivers, `createSandboxProvider`, `createPipeline`, `llm.ts`.     |
-| `src/cli/`          | `content:*`, `admin:grant`, `admin:password`, and the pipeline's `paper:ingest`, `paper:status`, `paper:publish`, `paper:eval`.  |
+| `src/cli/`          | `content:*`, `admin:grant`, `admin:password`. The pipeline has no commands: it is operated from the CMS (docs/specs/14-cms.md).  |
 | `src/middleware/`   | Request context, logging, cache policy, body limit, error envelope, session, guards.                                             |
 | `scripts/`          | `auth:schema`: regenerates `packages/db/src/schema/auth.ts` from Better Auth.                                                    |
 | `src/lib/`          | `AppError` and `validate()` for request input. The JSON logger is `@repo/shared/logger`.                                         |
@@ -77,14 +77,10 @@ bun run auth:schema && bun run db:generate             # after changing src/auth
 - `src/adapters/llm.ts` is the only file that imports `@anthropic-ai/sdk`. `LLM_DRIVER=fake`
   swaps in the scripted model that writes a demonstration paper.
 - `src/adapters/pipeline.ts` builds the pipeline; `createPipeline` returns null without a
-  model, and every `/v1/admin/ingestions` endpoint is then not found.
+  model, and every `/v1/admin/ingestions` and `/v1/admin/evals` endpoint is then not found.
 - Ticks run in the worker (polling every 2 s), in `main.ts` after an upload, and on
   serverless from `/api/internal/cron/pipeline` (every minute, and handed from one
   invocation to the next while work remains).
 
-```sh
-bun run paper:ingest <file.pdf|arxiv:ID> --confirm-rights [--wait] [--pause-after-plan]
-bun run paper:status [<ingestion-id>]
-bun run paper:publish <ingestion-id> --by <email>
-bun run paper:eval [--set <papers.json>] [--fresh] [--out report.json]   # spends real money
-```
+The pipeline is started, watched and published from the CMS only (`apps/cms`; docs/specs/14-cms.md). The
+backend's `CMS_ORIGIN` must be the CMS's address, so maintainers can sign in there.

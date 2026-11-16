@@ -10,7 +10,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deleteMe } from "@/lib/api/account";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 
 /** Deletes the account after the username is typed (`DELETE /v1/me`). */
 export function DeleteAccount({ username }: { username: string }) {

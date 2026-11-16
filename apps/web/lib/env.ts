@@ -13,6 +13,12 @@ const envSchema = z.object({
    */
   AVATAR_ORIGIN: httpOriginSchema.optional(),
   /**
+   * Public URL of the CMS (apps/cms), when this instance has one. Maintainers
+   * get an "Open CMS" link in the account menu; the maintainer screens
+   * themselves are not part of this app (docs/specs/14-cms.md §3).
+   */
+  NEXT_PUBLIC_CMS_URL: httpOriginSchema.optional(),
+  /**
    * Origin maintainers' browsers upload PDFs to when the backend stores files
    * in R2 (its S3 endpoint, https://<account>.r2.cloudflarestorage.com).
    * Allowed for fetch by the Content-Security-Policy. Unset with fs storage,

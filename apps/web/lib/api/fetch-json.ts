@@ -1,6 +1,6 @@
 import { errorBodySchema } from "@repo/shared";
 import type { z } from "zod";
-import { ApiError } from "./errors";
+import { ApiError } from "@repo/web-core/api/errors";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 

@@ -15,11 +15,14 @@ ARG API_ORIGIN=http://backend:8797
 ARG SITE_URL=http://localhost:8080
 # Only with avatars in R2: the public bucket's origin, for the image policy.
 ARG AVATAR_ORIGIN=
+# Only with a CMS: its public origin, for the maintainers' "Open CMS" link.
+ARG CMS_URL=
 # Only with files in R2: the S3 endpoint's origin, so PDFs can be uploaded to it directly.
 ARG UPLOAD_ORIGIN=
 ENV API_ORIGIN=$API_ORIGIN \
     NEXT_PUBLIC_SITE_URL=$SITE_URL \
     AVATAR_ORIGIN=$AVATAR_ORIGIN \
+    NEXT_PUBLIC_CMS_URL=$CMS_URL \
     UPLOAD_ORIGIN=$UPLOAD_ORIGIN \
     NEXT_TELEMETRY_DISABLED=1
 RUN bun run --cwd apps/web build
@@ -29,9 +32,11 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app /app
 ARG API_ORIGIN=http://backend:8797
 ARG SITE_URL=http://localhost:8080
+ARG CMS_URL=
 ENV NODE_ENV=production \
     API_ORIGIN=$API_ORIGIN \
     NEXT_PUBLIC_SITE_URL=$SITE_URL \
+    NEXT_PUBLIC_CMS_URL=$CMS_URL \
     NEXT_TELEMETRY_DISABLED=1
 USER node
 WORKDIR /app/apps/web

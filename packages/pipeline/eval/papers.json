@@ -1,7 +1,0 @@
-{
-  "$comment": "Reference papers for `bun run paper:eval` (docs/specs/09-paper-pipeline.md §18). Each has hand-written steps in content/ to compare with. The eval spends real money: run it by hand before merging a change to prompts, model or checks.",
-  "papers": [
-    { "name": "attention-is-all-you-need", "source": "arxiv:1706.03762" },
-    { "name": "adam", "source": "arxiv:1412.6980" }
-  ]
-}

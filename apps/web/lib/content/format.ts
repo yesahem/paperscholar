@@ -15,14 +15,6 @@ export function pluralise(count: number, noun: string, plural = `${noun}s`): str
   return `${count} ${count === 1 ? noun : plural}`;
 }
 
-/** `test_output_has_shape` → "output has shape" (docs/specs/08-web.md §5.5). */
-export function humaniseTestName(name: string): string {
-  return name
-    .replace(/^test_/, "")
-    .replace(/_+/g, " ")
-    .trim();
-}
-
 /** "deep-learning" → "deep learning". */
 export function formatTag(tag: string): string {
   return tag.replace(/-/g, " ");

@@ -6,7 +6,7 @@ import { useToast } from "@repo/ui/components/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserMinus, UserPlus } from "lucide-react";
 import { useAuthDialog } from "@/components/auth/auth-dialog";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 import { setFollowing } from "@/lib/api/users";
 import { queryKeys } from "@/lib/queries";
 

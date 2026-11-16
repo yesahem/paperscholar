@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { demoPdf, fetchArxivPdf, parseArxivId, PipelineError } from "../src";
+import { demoPdf, fetchArxivPdf, PipelineError } from "../src";
 
 type Route = (url: URL) => Response;
 
@@ -15,29 +15,6 @@ function fakeFetch(route: Route) {
 
 const pdfResponse = () =>
   new Response(demoPdf("arxiv"), { headers: { "content-type": "application/pdf" } });
-
-describe("parseArxivId", () => {
-  test("accepts the forms people paste, and nothing else", () => {
-    for (const input of [
-      "1706.03762",
-      "arxiv:1706.03762",
-      "arXiv:1706.03762v5",
-      "https://arxiv.org/abs/1706.03762",
-      "https://arxiv.org/pdf/1706.03762v5.pdf",
-    ]) {
-      expect(parseArxivId(input)?.startsWith("1706.03762")).toBe(true);
-    }
-    expect(parseArxivId("math/0211159")).toBe("math/0211159");
-    for (const input of [
-      "",
-      "https://evil.example/1706.03762",
-      "1706.037",
-      "../etc/passwd",
-    ]) {
-      expect(parseArxivId(input)).toBeNull();
-    }
-  });
-});
 
 describe("fetchArxivPdf", () => {
   test("downloads from arxiv.org, following redirects within it", async () => {

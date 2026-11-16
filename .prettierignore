@@ -6,3 +6,4 @@ bun.lock
 **/.turbo/**
 next-env.d.ts
 apps/web/public/monaco/**
+apps/cms/public/monaco/**

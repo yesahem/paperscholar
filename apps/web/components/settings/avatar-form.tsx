@@ -12,7 +12,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { removeAvatar, uploadAvatar } from "@/lib/api/account";
-import { ApiError } from "@/lib/api/errors";
+import { ApiError } from "@repo/web-core/api/errors";
 import { queryKeys } from "@/lib/queries";
 
 /**
