@@ -1,8 +1,13 @@
 "use client";
 
-import type { IngestionDetail, IngestionStatus } from "@repo/shared";
-import { useQuery } from "@tanstack/react-query";
-import { getDashboard, getLatestEval, getTracks } from "@/lib/api/cms";
+import type {
+  FeedbackStatus,
+  FeedbackType,
+  IngestionDetail,
+  IngestionStatus,
+} from "@repo/shared";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { getDashboard, getFeedbackInbox, getLatestEval, getTracks } from "@/lib/api/cms";
 import {
   getIngestion,
   getStep,
@@ -23,6 +28,9 @@ export const adminKeys = {
   dashboard: (days: number) => ["admin", "dashboard", days] as const,
   tracks: ["admin", "tracks"] as const,
   eval: ["admin", "eval"] as const,
+  feedback: ["admin", "feedback"] as const,
+  feedbackFilter: (type: FeedbackType, status: FeedbackStatus | null) =>
+    ["admin", "feedback", type, status] as const,
 };
 
 /** States in which the pipeline is still working, so progress is polled. */
@@ -119,5 +127,19 @@ export function useLatestEval() {
     queryFn: ({ signal }) => getLatestEval({ signal }),
     refetchInterval: (query) =>
       query.state.data?.run && !query.state.data.run.finished ? PROGRESS_POLL_MS : false,
+  });
+}
+
+/** The feedback inbox for one type and, optionally, one status; newest first. */
+export function useFeedbackInbox(type: FeedbackType, status: FeedbackStatus | null) {
+  return useInfiniteQuery({
+    queryKey: adminKeys.feedbackFilter(type, status),
+    queryFn: ({ pageParam, signal }) =>
+      getFeedbackInbox(
+        { type, status: status ?? undefined, cursor: pageParam },
+        { signal },
+      ),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor,
   });
 }

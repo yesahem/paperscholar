@@ -1,0 +1,20 @@
+$kind: http-request
+name: Read a running quiz
+order: 3200
+method: GET
+url: "{{baseUrl}}/api/v1/exams/attempts/{{attemptId}}"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('attemptId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is still running and still has no answers', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().status).to.eql('in_progress');
+        pm.expect(pm.response.text()).to.not.include('"answer"');
+        pm.expect(pm.response.text()).to.not.include('"explanation"');
+        pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store');
+      });

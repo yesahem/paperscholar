@@ -1,0 +1,24 @@
+$kind: http-request
+name: Start a quiz with too few questions
+order: 3000
+method: POST
+url: "{{baseUrl}}/api/v1/exams/attempts"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "topics": ["any-topic"], "count": 4 }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is a validation error naming the count', () => {
+        pm.response.to.have.status(400);
+        const error = pm.response.json().error;
+        pm.expect(error.code).to.eql('validation_error');
+        pm.expect(error.details.issues.map((issue) => issue.path)).to.include('count');
+      });

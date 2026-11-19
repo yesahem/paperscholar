@@ -7,6 +7,7 @@ import {
   runEnvironmentSchema,
   slugSchema,
 } from "@repo/shared";
+import { EXAM_OPTION_COUNT } from "@repo/shared/exams";
 import { z } from "zod";
 
 /**
@@ -101,3 +102,36 @@ export const trackFileSchema = z.strictObject({
   papers: uniqueList(slugSchema).min(1),
 });
 export type TrackFile = z.infer<typeof trackFileSchema>;
+
+/** One question of `content/exams/<topic>.yaml` (docs/specs/10-secondary-features.md §1). */
+export const examQuestionFileSchema = z
+  .strictObject({
+    id: slugSchema,
+    difficulty: difficultySchema,
+    /** Markdown. */
+    prompt: z.string().trim().min(1),
+    options: uniqueList(z.string().trim().min(1))
+      .min(EXAM_OPTION_COUNT.min, `must have at least ${EXAM_OPTION_COUNT.min} options`)
+      .max(EXAM_OPTION_COUNT.max, `must have at most ${EXAM_OPTION_COUNT.max} options`),
+    /** Index into `options`. */
+    answer: z.number().int().min(0),
+    /** Markdown. */
+    explanation: z.string().trim().min(1),
+  })
+  .refine((question) => question.answer < question.options.length, {
+    path: ["answer"],
+    message: "must be the index of one of the options",
+  });
+export type ExamQuestionFile = z.infer<typeof examQuestionFileSchema>;
+
+export const examFileSchema = z.strictObject({
+  title: z.string().trim().min(1).max(120),
+  questions: z
+    .array(examQuestionFileSchema)
+    .min(1)
+    .refine(
+      (questions) => new Set(questions.map((question) => question.id)).size === questions.length,
+      "must not repeat question ids",
+    ),
+});
+export type ExamFile = z.infer<typeof examFileSchema>;

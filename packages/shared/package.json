@@ -9,6 +9,8 @@
     "./accounts": "./src/accounts.ts",
     "./arxiv": "./src/arxiv.ts",
     "./errors": "./src/errors.ts",
+    "./exams": "./src/exams.ts",
+    "./feedback": "./src/feedback.ts",
     "./logger": "./src/logger.ts",
     "./pipeline": "./src/pipeline.ts",
     "./pipeline-schemas": "./src/pipeline-schemas.ts",

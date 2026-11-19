@@ -86,3 +86,24 @@ export async function writeLibrary(
   }
   return { root, cleanup: () => rm(parent, { recursive: true, force: true }) };
 }
+
+/**
+ * A quiz topic of `questionCount` questions. Question `n`'s answer is option
+ * `n % 3`, and every explanation carries the canary, so a test can prove
+ * neither leaks before grading.
+ */
+export function examYaml(title: string, questionCount: number, prefix = "q"): string {
+  const lines = [`title: ${title}`, "questions:"];
+  for (let n = 1; n <= questionCount; n += 1) {
+    const id = `${prefix}-${String(n).padStart(3, "0")}`;
+    lines.push(
+      `  - id: ${id}`,
+      `    difficulty: ${["easy", "medium", "hard"][n % 3]}`,
+      `    prompt: "Question ${n} of ${title}: which option is right?"`,
+      "    options: [Alpha, Beta, Gamma, Delta]",
+      `    answer: ${n % 3}`,
+      `    explanation: "Option ${n % 3} is right. ${CANARY}"`,
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}

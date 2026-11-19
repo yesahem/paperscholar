@@ -1,0 +1,23 @@
+$kind: http-request
+name: Approved reviews
+order: 1300
+method: GET
+url: "{{baseUrl}}/api/v1/feedback?type=review"
+queryParams:
+  - key: type
+    value: review
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists reviews with the author\'s public name only', () => {
+        pm.response.to.have.status(200);
+        const body = pm.response.json();
+        pm.expect(body.items).to.be.an('array');
+        pm.expect(body).to.have.property('nextCursor');
+        for (const review of body.items) {
+          pm.expect(review.author.username).to.be.a('string');
+          pm.expect(review).to.not.have.property('status');
+          pm.expect(JSON.stringify(review)).to.not.include('@');
+        }
+      });

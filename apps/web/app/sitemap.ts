@@ -9,7 +9,16 @@ import { loadWebEnv } from "@/lib/env";
 
 export const revalidate = 3600;
 
-const STATIC_PATHS = ["/", "/papers", "/roadmap", "/about", "/terms", "/privacy"];
+const STATIC_PATHS = [
+  "/",
+  "/papers",
+  "/roadmap",
+  "/test",
+  "/feedback",
+  "/about",
+  "/terms",
+  "/privacy",
+];
 
 /** Static pages plus every published paper and problem (docs/specs/08-web.md §9). */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

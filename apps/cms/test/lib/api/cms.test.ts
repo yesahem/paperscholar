@@ -1,10 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { ApiError } from "@repo/web-core/api/errors";
 import {
+  deleteFeedback,
   getDashboard,
+  getFeedbackInbox,
   getLatestEval,
   getTracks,
   putTracks,
+  setFeedbackStatus,
   startEval,
 } from "@/lib/api/cms";
 
@@ -97,5 +100,76 @@ describe("dashboard and eval", () => {
       method: "POST",
       body: { fresh: true, confirmCost: true },
     });
+  });
+});
+
+describe("feedback inbox", () => {
+  const item = {
+    id: "0190f0c1-1d2e-7a3b-8c4d-5e6f7a8b9c0d",
+    type: "bug",
+    rating: null,
+    body: "The test is wrong",
+    status: "open",
+    paperId: "adam",
+    problemId: "adam-step",
+    createdAt: "2026-11-20T10:00:00.000Z",
+    updatedAt: "2026-11-20T10:00:00.000Z",
+    author: { username: "ada" },
+    ingestionId: null,
+  };
+
+  test("lists with filters and a cursor", async () => {
+    const api = fakeApi(() => json({ items: [item], nextCursor: null }));
+    const list = await getFeedbackInbox(
+      { type: "bug", status: "open", cursor: "abc" },
+      { fetch: api.fetch },
+    );
+    expect(list.items).toEqual([item]);
+    expect(api.calls[0]?.url).toBe(
+      "/api/v1/admin/feedback?type=bug&status=open&cursor=abc",
+    );
+  });
+
+  test("changes a status", async () => {
+    const api = fakeApi(() => json({ ...item, status: "resolved" }));
+    expect(
+      (await setFeedbackStatus(item.id, "resolved", { fetch: api.fetch })).status,
+    ).toBe("resolved");
+    expect(api.calls[0]).toEqual({
+      url: `/api/v1/admin/feedback/${item.id}`,
+      method: "PATCH",
+      body: { status: "resolved" },
+    });
+  });
+
+  test("deletes through the feedback endpoint", async () => {
+    const api = fakeApi(() => new Response(null, { status: 204 }));
+    await deleteFeedback(item.id, { fetch: api.fetch });
+    expect(api.calls[0]).toEqual({
+      url: `/api/v1/feedback/${item.id}`,
+      method: "DELETE",
+      body: undefined,
+    });
+  });
+
+  test("a maintainer approving a review gets the API's message", async () => {
+    const api = fakeApi(() =>
+      json(
+        {
+          error: {
+            code: "forbidden",
+            message: "Only an admin can approve or reject reviews.",
+            requestId: "r",
+          },
+        },
+        403,
+      ),
+    );
+    const failure = await setFeedbackStatus(item.id, "approved", {
+      fetch: api.fetch,
+    }).catch((error: unknown) => error);
+    if (!(failure instanceof ApiError)) throw new Error("expected an ApiError");
+    expect(failure.status).toBe(403);
+    expect(failure.message).toBe("Only an admin can approve or reject reviews.");
   });
 });

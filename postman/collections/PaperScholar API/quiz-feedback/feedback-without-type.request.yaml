@@ -1,0 +1,18 @@
+$kind: http-request
+name: Feedback list without a type
+order: 1200
+method: GET
+url: "{{baseUrl}}/api/v1/feedback?type=bug"
+queryParams:
+  - key: type
+    value: bug
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('bug reports are never listed publicly', () => {
+        pm.response.to.have.status(400);
+        const error = pm.response.json().error;
+        pm.expect(error.code).to.eql('validation_error');
+        pm.expect(error.details.issues.map((issue) => issue.path)).to.include('type');
+      });

@@ -1,0 +1,24 @@
+$kind: http-request
+name: Edit my report
+order: 4200
+method: PATCH
+url: "{{baseUrl}}/api/v1/feedback/{{feedbackId}}"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "body": "Contract check, edited." }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('changes the text and keeps the status', () => {
+        pm.response.to.have.status(200);
+        const item = pm.response.json();
+        pm.expect(item.body).to.eql('Contract check, edited.');
+        pm.expect(item.status).to.eql('open');
+      });

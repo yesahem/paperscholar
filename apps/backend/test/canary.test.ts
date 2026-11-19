@@ -1,5 +1,6 @@
 import { defaultLocalPythonPath, LocalProvider } from "@repo/runner";
 import {
+  examAttemptSchema,
   paperListSchema,
   paperDetailSchema,
   submissionCreatedSchema,
@@ -16,7 +17,13 @@ import { createTestApp } from "./helpers";
  * public endpoints are added to `fixedPaths`; paper and problem paths are
  * discovered from the catalogue so new content is covered automatically.
  */
-const fixedPaths = ["/api/health", "/api/v1/config", "/api/v1/papers", "/api/v1/tracks"];
+const fixedPaths = [
+  "/api/health",
+  "/api/v1/config",
+  "/api/v1/papers",
+  "/api/v1/tracks",
+  "/api/v1/exams/topics",
+];
 
 let content: SyncedContent;
 beforeAll(async () => {
@@ -53,6 +60,40 @@ describe("private-content canary", () => {
       expect({ path, leaked: (await res.text()).includes(CANARY) }).toEqual({
         path,
         leaked: false,
+      });
+    }
+  });
+});
+
+describe.skipIf(!DATABASE_URL)("private-content canary in quiz attempts", () => {
+  const database = useTestDatabase();
+
+  test("answers and explanations appear in no response before an attempt is graded", async () => {
+    const { app } = createTestApp({}, content.reader, { db: database.db });
+    const browser = new TestBrowser(app);
+    const username = `quizcanary${Date.now().toString(36)}`;
+    await browser.signUp({ email: `${username}@example.com`, username });
+
+    const started = await browser.request("/api/v1/exams/attempts", {
+      method: "POST",
+      body: { topics: ["nlp", "vision"], count: 30 },
+    });
+    expect(started.status).toBe(201);
+    const text = await started.text();
+    expect(text.includes(CANARY)).toBe(false);
+    const attempt = examAttemptSchema.parse(JSON.parse(text));
+    expect(text).not.toContain('"answer"');
+    expect(text).not.toContain('"explanation"');
+
+    for (const path of [
+      `/api/v1/exams/attempts/${attempt.id}`,
+      "/api/v1/exams/attempts",
+    ]) {
+      const body = await (await browser.request(path)).text();
+      expect({ path, leaked: body.includes(CANARY) }).toEqual({ path, leaked: false });
+      expect({ path, answers: body.includes('"answer"') }).toEqual({
+        path,
+        answers: false,
       });
     }
   });

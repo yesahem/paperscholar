@@ -1,0 +1,23 @@
+$kind: http-request
+name: Report a step that does not exist
+order: 4050
+method: POST
+url: "{{baseUrl}}/api/v1/feedback"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "type": "bug", "body": "Wrong", "paperId": "{{paperId}}", "problemId": "no-such-step" }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is a validation error naming the problem', () => {
+        pm.response.to.have.status(400);
+        const error = pm.response.json().error;
+        pm.expect(error.details.issues.map((issue) => issue.path)).to.include('problemId');
+      });

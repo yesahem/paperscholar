@@ -1,5 +1,5 @@
 import { buttonVariants } from "@repo/ui/components/button";
-import { ArrowRight, Flag } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,10 +7,9 @@ import { DifficultyBadge } from "@/components/content/difficulty-badge";
 import { Markdown } from "@/components/content/markdown";
 import { SolvedMark } from "@/components/progress/solved-mark";
 import { LimitsBox } from "@/components/workspace/limits-box";
+import { ReportStep } from "@/components/workspace/report-step";
 import { Workspace } from "@/components/workspace/workspace";
 import { getPaper, getProblem } from "@/lib/api/content";
-import { loadWebEnv } from "@/lib/env";
-import { problemReportUrl } from "@/lib/content/report-link";
 
 export const revalidate = 30;
 
@@ -50,7 +49,6 @@ export default async function ProblemPage({ params }: ProblemPageProps) {
   if (!paper || !problem) notFound();
 
   const next = paper.problems.find((candidate) => candidate.order === problem.order + 1);
-  const pageUrl = `${loadWebEnv().NEXT_PUBLIC_SITE_URL}/papers/${paperId}/problems/${problemId}`;
 
   const heading = (
     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
@@ -80,15 +78,11 @@ export default async function ProblemPage({ params }: ProblemPageProps) {
       <Markdown>{problem.description}</Markdown>
       <LimitsBox problem={problem} />
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-        <a
-          href={problemReportUrl({ paperId, problemId, title: problem.title, pageUrl })}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          <Flag aria-hidden="true" className="size-3.5" />
-          Report a problem with this step
-        </a>
+        <ReportStep
+          paperId={paperId}
+          problemId={problemId}
+          problemTitle={problem.title}
+        />
         {next ? (
           <Link
             href={`/papers/${paperId}/problems/${next.id}`}

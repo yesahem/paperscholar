@@ -1,0 +1,17 @@
+$kind: http-request
+name: My feedback
+order: 4100
+method: GET
+url: "{{baseUrl}}/api/v1/feedback?mine=1"
+queryParams:
+  - key: mine
+    value: "1"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists the caller\'s own items, bug reports included', () => {
+        pm.response.to.have.status(200);
+        const ids = pm.response.json().items.map((item) => item.id);
+        pm.expect(ids).to.eql([pm.collectionVariables.get('feedbackId')]);
+      });

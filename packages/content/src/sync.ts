@@ -2,6 +2,7 @@ import { toStoredProblem } from "./build-documents";
 import type { StoredProblemPrivate, StoredProblemPublic } from "./schemas/stored";
 import type { ContentLibrary, SourcePaper } from "./source/read-library";
 import type { ContentStore } from "./store/content-store";
+import type { ExamSyncReport } from "./store/exam-store";
 
 export interface SyncConflict {
   paperId: string;
@@ -16,6 +17,8 @@ export interface SyncReport {
   /** Problems kept as `retired` because their files were removed. */
   retired: { paperId: string; problemIds: string[] }[];
   tracks: "created" | "updated" | "unchanged";
+  /** Quiz topics (docs/specs/10-secondary-features.md §1). */
+  exams: ExamSyncReport;
   dryRun: boolean;
 }
 
@@ -92,6 +95,7 @@ export async function syncLibrary(
     conflicts: [],
     retired: [],
     tracks: "unchanged",
+    exams: { created: [], updated: [], unchanged: [], removed: [] },
     dryRun,
   };
   const index = await store.getIndex({ fresh: true });
@@ -139,6 +143,7 @@ export async function syncLibrary(
     library.tracksHash,
     { dryRun },
   );
+  report.exams = await store.exams.syncLibrary(library.exams, { dryRun });
 
   return report;
 }

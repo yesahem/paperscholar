@@ -9,7 +9,7 @@ export { createAdvisoryLock, type AdvisoryLock } from "./advisory-lock";
 export { isUniqueViolation } from "./errors";
 export { MIGRATIONS_DIR, migrateDatabase } from "./migrations";
 export * as schema from "./schema";
-export type { StoredSubmissionResult } from "./schema";
+export type { StoredExamQuestion, StoredSubmissionResult } from "./schema";
 /** Query operators, re-exported so every package builds queries with this package's Drizzle. */
 export {
   and,

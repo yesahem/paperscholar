@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { hashFiles, type HashableFile } from "../hash";
 import { findRawHtml } from "../markdown";
 import {
+  examFileSchema,
   paperFileSchema,
   problemFileSchema,
   trackFileSchema,
@@ -12,6 +13,7 @@ import {
   type ProblemFile,
   type TrackFile,
 } from "../schemas/source";
+import type { LibraryExam } from "../store/exam-store";
 import { ContentValidationError, type ContentIssue } from "./errors";
 
 export interface SourceProblem {
@@ -43,10 +45,14 @@ export interface SourceTrack {
   meta: TrackFile;
 }
 
+/** A quiz topic from `exams/<topic>.yaml`. */
+export type SourceExam = LibraryExam;
+
 export interface ContentLibrary {
   papers: SourcePaper[];
   tracks: SourceTrack[];
   tracksHash: string;
+  exams: SourceExam[];
 }
 
 const PROBLEM_FOLDER = /^(\d{2})-(.+)$/;
@@ -303,6 +309,43 @@ class LibraryReader {
     }
     return { tracks, hash: hashFiles(contents) };
   }
+
+  /** Quiz topics, one YAML file each (docs/specs/10-secondary-features.md §1). */
+  async readExams(): Promise<SourceExam[]> {
+    const directory = join(this.root, "exams");
+    let files: string[] = [];
+    try {
+      files = (await readdir(directory)).filter((name) => !name.startsWith(".")).sort();
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
+        throw error;
+    }
+
+    const exams: SourceExam[] = [];
+    for (const file of files) {
+      const path = join(directory, file);
+      if (!file.endsWith(".yaml")) {
+        this.issue(path, "quiz topics are .yaml files");
+        continue;
+      }
+      const id = file.slice(0, -".yaml".length);
+      if (!this.checkSlug(path, id, "topic")) continue;
+      const text = (await this.text(path)) ?? "";
+      const meta = await this.yaml(path, examFileSchema);
+      if (!meta) continue;
+      for (const question of meta.questions) {
+        this.checkMarkdown(path, question.prompt);
+        this.checkMarkdown(path, question.explanation);
+      }
+      exams.push({
+        id,
+        title: meta.title,
+        questions: meta.questions,
+        sourceHash: hashFiles([{ path: file, content: text }]),
+      });
+    }
+    return exams;
+  }
 }
 
 /**
@@ -327,6 +370,8 @@ export async function readContentLibrary(root: string): Promise<ContentLibrary> 
     new Set(papers.map((paper) => paper.id)),
   );
 
+  const exams = await reader.readExams();
+
   if (reader.issues.length > 0) throw new ContentValidationError(reader.issues);
-  return { papers, tracks, tracksHash: hash };
+  return { papers, tracks, tracksHash: hash, exams };
 }

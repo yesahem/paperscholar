@@ -23,6 +23,7 @@ import { requestLogger } from "./middleware/request-logger";
 import { session } from "./middleware/session";
 import { adminDashboardRoutes } from "./routes/admin/dashboard";
 import { adminEvalRoutes } from "./routes/admin/evals";
+import { adminFeedbackRoutes } from "./routes/admin/feedback";
 import { adminIngestionRoutes } from "./routes/admin/ingestions";
 import { adminPaperRoutes } from "./routes/admin/papers";
 import { adminTrackRoutes } from "./routes/admin/tracks";
@@ -30,6 +31,8 @@ import { adminUserRoutes } from "./routes/admin/users";
 import { authRoutes } from "./routes/auth";
 import { avatarRoutes } from "./routes/avatars";
 import { configRoutes } from "./routes/config";
+import { examsRoutes } from "./routes/exams";
+import { feedbackRoutes } from "./routes/feedback";
 import { cspReportRoutes } from "./routes/csp-reports";
 import { healthRoutes } from "./routes/health";
 import { internalRoutes } from "./routes/internal";
@@ -47,6 +50,8 @@ import { createAdminPapers } from "./services/admin-papers";
 import { createAdminTracks } from "./services/admin-tracks";
 import { createDashboard } from "./services/dashboard";
 import { createEvals } from "./services/evals";
+import { createExams } from "./services/exams";
+import { createFeedback } from "./services/feedback";
 import { createContentCatalog } from "./services/content-catalog";
 import { createIngestions, PDF_UPLOAD_PATH_PREFIX } from "./services/ingestions";
 import { PROMPT_VERSION } from "@repo/pipeline";
@@ -134,6 +139,22 @@ export function createApp({
     dispatch: (id) => runInBackground(submissions.execute(id)),
   });
 
+  const exams = createExams({
+    db,
+    content,
+    limiter,
+    attemptsPerDay: config.limits.examAttemptsPerDay,
+    logger,
+  });
+  const feedback = createFeedback({
+    db,
+    content,
+    limiter,
+    perDay: config.limits.feedbackPerDay,
+    avatarUrl,
+    logger,
+  });
+
   if (pipeline && config.cmsOrigin === null) {
     logger.warn(
       "The paper pipeline is on but CMS_ORIGIN is not set; set it to the CMS's origin so maintainers can sign in there (docs/specs/14-cms.md §3.4).",
@@ -186,6 +207,7 @@ export function createApp({
     .route("/admin/tracks", adminTrackRoutes(adminTracks))
     .route("/admin/evals", adminEvalRoutes(evals, accounts))
     .route("/admin/users", adminUserRoutes(accounts))
+    .route("/admin/feedback", adminFeedbackRoutes(feedback, accounts.currentRole))
     .route("/papers", papersRoutes(catalog))
     .route("/tracks", tracksRoutes(catalog))
     .route("/config", configRoutes(instanceConfig(config)))
@@ -193,6 +215,8 @@ export function createApp({
     .route("/submissions", submissionsRoutes(submissions, verifiesEmail(config)))
     .route("/progress", progressRoutes(db))
     .route("/leaderboard", leaderboardRoutes(leaderboard))
+    .route("/exams", examsRoutes(exams))
+    .route("/feedback", feedbackRoutes(feedback, accounts.currentRole))
     .route(
       "/users",
       usersRoutes({

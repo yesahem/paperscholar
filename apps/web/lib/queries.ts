@@ -2,8 +2,10 @@
 
 import type { LeaderboardSort } from "@repo/shared/progress";
 import { sessionQueryKeys, useMe } from "@repo/web-core/queries/session";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { getExamAttempts, getExamTopics } from "@/lib/api/exams";
+import { getMyFeedback, getReviews } from "@/lib/api/feedback";
 import { getLeaderboard, getLeaderboardRank, getProgress } from "@/lib/api/progress";
 import { getPaperTitles, getProfile } from "@/lib/api/users";
 import { solvedKeys } from "@/lib/progress/solved";
@@ -22,6 +24,10 @@ export const queryKeys = {
   profile: (username: string) => ["profile", username] as const,
   following: (username: string) => ["following", username] as const,
   paperTitles: ["paper-titles"] as const,
+  examTopics: ["exams", "topics"] as const,
+  examAttempts: ["exams", "attempts"] as const,
+  reviews: ["feedback", "reviews"] as const,
+  myFeedback: ["feedback", "mine"] as const,
 };
 
 /** Never retry an answer the API gave on purpose (a 4xx); retry network trouble twice. */
@@ -97,4 +103,50 @@ export function usePaperTitles() {
     () => new Map((query.data?.items ?? []).map((paper) => [paper.id, paper.title])),
     [query.data],
   );
+}
+
+/** Quiz topics (`GET /v1/exams/topics`), public. */
+export function useExamTopics() {
+  return useQuery({
+    queryKey: queryKeys.examTopics,
+    queryFn: ({ signal }) => getExamTopics({ signal }),
+    staleTime: 60_000,
+    retry: retryUnlessRefused,
+  });
+}
+
+/** The signed-in user's quiz attempts, newest first, a page at a time. */
+export function useExamAttempts(enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.examAttempts,
+    queryFn: ({ pageParam, signal }) => getExamAttempts(pageParam, { signal }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor,
+    enabled,
+    retry: retryUnlessRefused,
+  });
+}
+
+/** Approved reviews, newest first, a page at a time. */
+export function useReviews() {
+  return useInfiniteQuery({
+    queryKey: queryKeys.reviews,
+    queryFn: ({ pageParam, signal }) => getReviews(pageParam, { signal }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor,
+    staleTime: 60_000,
+    retry: retryUnlessRefused,
+  });
+}
+
+/** The signed-in user's own reviews and bug reports. */
+export function useMyFeedback(enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.myFeedback,
+    queryFn: ({ pageParam, signal }) => getMyFeedback(pageParam, { signal }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor,
+    enabled,
+    retry: retryUnlessRefused,
+  });
 }

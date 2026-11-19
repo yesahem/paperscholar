@@ -19,6 +19,10 @@ export const DEFAULT_RUNS_PER_DAY = 100;
 export const DEFAULT_RUNS_PER_MINUTE = 10;
 /** Default ceiling on runs per day across the instance: a spending circuit-breaker. */
 export const DEFAULT_GLOBAL_RUNS_PER_DAY = 20_000;
+/** Default quiz attempts per user per UTC day (docs/specs/10-secondary-features.md §1). */
+export const DEFAULT_EXAM_ATTEMPTS_PER_DAY = 20;
+/** Default reviews and bug reports per user per UTC day (docs/specs/10-secondary-features.md §4). */
+export const DEFAULT_FEEDBACK_PER_DAY = 10;
 /** Default writes per user per minute (docs/specs/11-security-ops.md §3). */
 export const DEFAULT_MUTATIONS_PER_MINUTE = 60;
 /** Shortest accepted RUNNER_TOKEN and INTERNAL_SECRET. */
@@ -86,6 +90,8 @@ const envSchema = z
     RUNS_PER_MINUTE: positiveCount(DEFAULT_RUNS_PER_MINUTE),
     GLOBAL_RUNS_PER_DAY: positiveCount(DEFAULT_GLOBAL_RUNS_PER_DAY),
     MUTATIONS_PER_MINUTE: positiveCount(DEFAULT_MUTATIONS_PER_MINUTE),
+    EXAM_ATTEMPTS_PER_DAY: positiveCount(DEFAULT_EXAM_ATTEMPTS_PER_DAY),
+    FEEDBACK_PER_DAY: positiveCount(DEFAULT_FEEDBACK_PER_DAY),
 
     RUNNER_PROVIDER: z.enum(RUNNER_PROVIDERS).optional(),
     RUNNER_PYTHON: optionalText,
@@ -502,6 +508,10 @@ export interface LimitsConfig {
   globalRunsPerDay: number;
   /** Writes (POST, PATCH, PUT, DELETE under /v1) per user per minute. */
   mutationsPerMinute: number;
+  /** Quiz attempts started per user per UTC day. */
+  examAttemptsPerDay: number;
+  /** Reviews and bug reports filed per user per UTC day. */
+  feedbackPerDay: number;
 }
 
 export interface AuthConfig {
@@ -576,6 +586,8 @@ export function loadConfig(
       runsPerMinute: env.RUNS_PER_MINUTE,
       globalRunsPerDay: env.GLOBAL_RUNS_PER_DAY,
       mutationsPerMinute: env.MUTATIONS_PER_MINUTE,
+      examAttemptsPerDay: env.EXAM_ATTEMPTS_PER_DAY,
+      feedbackPerDay: env.FEEDBACK_PER_DAY,
     },
     runner: runnerConfig(env),
     internalSecret: env.INTERNAL_SECRET ?? null,

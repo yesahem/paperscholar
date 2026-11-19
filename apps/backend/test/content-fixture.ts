@@ -8,6 +8,7 @@ import {
 import {
   baseLibrary,
   CANARY,
+  examYaml,
   helpersWithCanary,
   problemFiles,
   writeLibrary,
@@ -22,7 +23,8 @@ export { CANARY };
 
 /**
  * The shared two-paper library, plus a second problem with helpers and a
- * tutorial in `rectifier-networks`. Every private part carries the canary.
+ * tutorial in `rectifier-networks`, and two quiz topics (`nlp`, 8 questions;
+ * `vision`, 3). Every private part carries the canary.
  */
 export function catalogueLibrary(): LibrarySpec {
   const files = baseLibrary();
@@ -45,6 +47,8 @@ paper_refs: [Section 2]
   for (const [path, content] of Object.entries(second)) {
     files[`papers/rectifier-networks/problems/02-clipped/${path}`] = content;
   }
+  files["exams/nlp.yaml"] = examYaml("Natural Language Processing", 8, "nlp");
+  files["exams/vision.yaml"] = examYaml("Vision", 3, "cv");
   return files;
 }
 

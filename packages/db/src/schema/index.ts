@@ -11,3 +11,5 @@ export {
 export { rateLimitCounters } from "./rate-limit-counters";
 export { submissions, type StoredSubmissionResult } from "./submissions";
 export { ingestionSteps, ingestions, pipelineTasks } from "./pipeline";
+export { examAttempts, type StoredExamQuestion } from "./exams";
+export { feedback } from "./feedback";

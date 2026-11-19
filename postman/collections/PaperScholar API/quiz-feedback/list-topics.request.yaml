@@ -1,0 +1,21 @@
+$kind: http-request
+name: List quiz topics
+order: 1000
+method: GET
+url: "{{baseUrl}}/api/v1/exams/topics"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists topics publicly and cacheably', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.headers.get('Cache-Control')).to.include('public');
+        const { items } = pm.response.json();
+        pm.expect(items).to.be.an('array');
+        for (const topic of items) {
+          pm.expect(topic.id).to.be.a('string');
+          pm.expect(topic.title).to.be.a('string');
+          pm.expect(topic.questionCount).to.be.a('number');
+        }
+        pm.collectionVariables.set('topicId', items.length > 0 ? items[0].id : '');
+      });

@@ -165,3 +165,58 @@ export const tracksDocSchema = z.object({
   tracks: z.array(storedTrackSchema),
 });
 export type TracksDoc = z.infer<typeof tracksDocSchema>;
+
+// ── Quiz sets (docs/specs/10-secondary-features.md §1) ─────────────────────────
+
+/** One topic in `content/exams/index.json`. */
+export const examIndexTopicSchema = z.object({
+  id: slugSchema,
+  title: z.string(),
+  questionCount: z.number().int().min(0),
+  /** Hash of the topic's source file; sync skips an unchanged topic. */
+  sourceHash: z.string(),
+});
+export type ExamIndexTopic = z.infer<typeof examIndexTopicSchema>;
+
+/**
+ * `content/exams/index.json`: every quiz topic. Written after the topic's
+ * documents, so a topic listed here is complete.
+ */
+export const examIndexSchema = z.object({
+  schemaVersion: z.literal(1),
+  updatedAt: isoTimestamp,
+  topics: z.array(examIndexTopicSchema),
+});
+export type ExamIndex = z.infer<typeof examIndexSchema>;
+
+/** `content/exams/<topic>/public.json`: questions without answers. */
+export const examPublicDocSchema = z.object({
+  schemaVersion: z.literal(1),
+  topicId: slugSchema,
+  sourceHash: z.string(),
+  title: z.string(),
+  questions: z.array(
+    z.object({
+      id: slugSchema,
+      difficulty: difficultySchema,
+      prompt: z.string(),
+      options: z.array(z.string()),
+    }),
+  ),
+});
+export type ExamPublicDoc = z.infer<typeof examPublicDocSchema>;
+
+/** `content/exams/<topic>/private.json`: answers and explanations, never served before grading. */
+export const examPrivateDocSchema = z.object({
+  schemaVersion: z.literal(1),
+  topicId: slugSchema,
+  sourceHash: z.string(),
+  questions: z.array(
+    z.object({
+      id: slugSchema,
+      answer: z.number().int().min(0),
+      explanation: z.string(),
+    }),
+  ),
+});
+export type ExamPrivateDoc = z.infer<typeof examPrivateDocSchema>;

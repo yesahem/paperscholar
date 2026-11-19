@@ -1,0 +1,28 @@
+$kind: http-request
+name: Submit the same quiz again
+order: 3400
+method: POST
+url: "{{baseUrl}}/api/v1/exams/attempts/{{attemptId}}/submit"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "answers": {{answers}} }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('attemptId')) pm.execution.skipRequest();
+      const total = Number(pm.collectionVariables.get('attemptTotal'));
+      pm.variables.set('answers', JSON.stringify(Array.from({ length: total }, () => 0)));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is graded only once', () => {
+        pm.response.to.have.status(409);
+        pm.expect(pm.response.json().error.code).to.eql('conflict');
+      });

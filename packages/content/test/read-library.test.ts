@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { ContentValidationError, readContentLibrary } from "../src";
 import {
   baseLibrary,
+  examYaml,
   problemFiles,
   writeLibrary,
   type LibrarySpec,
@@ -135,5 +136,51 @@ describe("readContentLibrary", () => {
     spec["papers/rectifier-networks/paper.yaml"] = "title: [not a string]\n";
     spec["papers/second-paper/problems/01-relu/starter.py"] = null;
     expect((await issuesOf(spec)).length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("readContentLibrary: quiz topics", () => {
+  test("reads each exams/<topic>.yaml with its questions and a hash", async () => {
+    const library = await read({ ...baseLibrary(), "exams/nlp.yaml": examYaml("NLP", 2) });
+    expect(library.exams).toHaveLength(1);
+    expect(library.exams[0]).toMatchObject({ id: "nlp", title: "NLP" });
+    expect(library.exams[0]?.questions[1]).toMatchObject({
+      id: "q-002",
+      difficulty: "hard",
+      options: ["Alpha", "Beta", "Gamma", "Delta"],
+      answer: 2,
+    });
+    expect(library.exams[0]?.sourceHash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  test("a library without exams/ has no topics", async () => {
+    expect((await read(baseLibrary())).exams).toEqual([]);
+  });
+
+  test("names the file for every invalid topic", async () => {
+    const question = (fields: string) =>
+      `title: Bad\nquestions:\n  - id: q-1\n    difficulty: easy\n${fields}`;
+    const issues = await issuesOf({
+      ...baseLibrary(),
+      "exams/out-of-range.yaml": question(
+        "    prompt: Which?\n    options: [A, B]\n    answer: 2\n    explanation: Because.\n",
+      ),
+      "exams/one-option.yaml": question(
+        "    prompt: Which?\n    options: [A]\n    answer: 0\n    explanation: Because.\n",
+      ),
+      "exams/raw-html.yaml": question(
+        "    prompt: <b>Which?</b>\n    options: [A, B]\n    answer: 0\n    explanation: Because.\n",
+      ),
+      "exams/Bad_Name.yaml": examYaml("Bad", 1),
+      "exams/notes.txt": "not a topic",
+      "exams/repeated.yaml": `${examYaml("Repeated", 1)}${examYaml("Repeated", 1).split("questions:\n")[1] ?? ""}`,
+    });
+    const joined = issues.join("\n");
+    expect(joined).toContain("content/exams/out-of-range.yaml: questions.0.answer");
+    expect(joined).toContain("content/exams/one-option.yaml: questions.0.options");
+    expect(joined).toContain("content/exams/raw-html.yaml: raw HTML is not allowed");
+    expect(joined).toContain("content/exams/Bad_Name.yaml: topic id");
+    expect(joined).toContain("content/exams/notes.txt: quiz topics are .yaml files");
+    expect(joined).toContain("content/exams/repeated.yaml: questions: must not repeat question ids");
   });
 });

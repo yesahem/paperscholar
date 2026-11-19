@@ -1,0 +1,8 @@
+$kind: collection
+name: Quiz and feedback
+description: |-
+  Quiz mode and feedback (docs/specs/10-secondary-features.md §1, §4), as a
+  throwaway account deleted at the end. The attempt requests are skipped on an
+  instance with no quiz topics. Answers and explanations must not appear in any
+  response before the attempt is submitted.
+order: 3800

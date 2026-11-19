@@ -1,0 +1,23 @@
+$kind: http-request
+name: Quiz history
+order: 3500
+method: GET
+url: "{{baseUrl}}/api/v1/exams/attempts"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists the caller\'s attempts with their scores', () => {
+        pm.response.to.have.status(200);
+        const body = pm.response.json();
+        pm.expect(body).to.have.property('nextCursor');
+        const id = pm.collectionVariables.get('attemptId');
+        if (id) {
+          const attempt = body.items.find((item) => item.id === id);
+          pm.expect(attempt.status).to.eql('submitted');
+          pm.expect(attempt.score).to.eql(0);
+        } else {
+          pm.expect(body.items).to.eql([]);
+        }
+        pm.expect(pm.response.text()).to.not.include('"explanation"');
+      });

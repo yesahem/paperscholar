@@ -24,7 +24,16 @@ import { ApiError } from "@repo/web-core/api/errors";
 import { StepReview } from "./step-review";
 
 /** `/ingestions/[id]/review`: the review screen of spec 09 §10. */
-export function ReviewView({ id, siteUrl }: { id: string; siteUrl: string }) {
+export function ReviewView({
+  id,
+  siteUrl,
+  initialStep = null,
+}: {
+  id: string;
+  siteUrl: string;
+  /** The step to show first; the first step when null or unknown. */
+  initialStep?: string | null;
+}) {
   const ingestion = useIngestion(id);
   if (ingestion.isPending) return <Skeleton className="h-96 w-full" />;
   if (ingestion.isError) {
@@ -48,14 +57,24 @@ export function ReviewView({ id, siteUrl }: { id: string; siteUrl: string }) {
       </Alert>
     );
   }
-  return <Review detail={detail} siteUrl={siteUrl} />;
+  return <Review detail={detail} siteUrl={siteUrl} initialStep={initialStep} />;
 }
 
-function Review({ detail, siteUrl }: { detail: IngestionDetail; siteUrl: string }) {
+function Review({
+  detail,
+  siteUrl,
+  initialStep,
+}: {
+  detail: IngestionDetail;
+  siteUrl: string;
+  initialStep: string | null;
+}) {
   const queries = useQueryClient();
   const toast = useToast();
   const [selected, setSelected] = useState<string | null>(
-    detail.stepStates[0]?.stepId ?? null,
+    detail.stepStates.find((state) => state.stepId === initialStep)?.stepId ??
+      detail.stepStates[0]?.stepId ??
+      null,
   );
   const step =
     detail.stepStates.find((candidate) => candidate.stepId === selected) ??

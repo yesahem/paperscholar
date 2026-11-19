@@ -23,3 +23,11 @@ export function indexHistoryKey(at: Date, nonce: string): string {
   const stamp = at.toISOString().replace(/[-:.]/g, "");
   return `content/index-history/${stamp}-${nonce}.json`;
 }
+
+/** `content/exams/index.json`: the quiz topics (docs/specs/03-content.md §2.1). */
+export const EXAM_INDEX_KEY = "content/exams/index.json";
+
+/** `content/exams/<topicId>/<part>.json` */
+export function examKey(topicId: string, part: DocumentPart): string {
+  return `content/exams/${topicId}/${part}.json`;
+}

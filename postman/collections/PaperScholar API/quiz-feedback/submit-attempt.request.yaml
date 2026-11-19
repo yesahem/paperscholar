@@ -1,0 +1,36 @@
+$kind: http-request
+name: Submit a quiz
+order: 3300
+method: POST
+url: "{{baseUrl}}/api/v1/exams/attempts/{{attemptId}}/submit"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "answers": {{answers}} }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('attemptId')) pm.execution.skipRequest();
+      const total = Number(pm.collectionVariables.get('attemptTotal'));
+      pm.variables.set('answers', JSON.stringify(Array.from({ length: total }, () => null)));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('grades the attempt; unanswered questions are wrong', () => {
+        pm.response.to.have.status(200);
+        const attempt = pm.response.json();
+        pm.expect(attempt.status).to.eql('submitted');
+        pm.expect(attempt.score).to.eql(0);
+        for (const question of attempt.questions) {
+          pm.expect(question.chosen).to.eql(null);
+          pm.expect(question.correct).to.eql(false);
+          pm.expect(question.answer).to.be.a('number');
+          pm.expect(question.explanation).to.be.a('string').and.not.empty;
+        }
+      });

@@ -1,9 +1,15 @@
 import {
+  adminFeedbackItemSchema,
+  adminFeedbackListSchema,
   adminTracksSchema,
   dashboardSchema,
   evalRunSchema,
   latestEvalSchema,
+  type AdminFeedbackItem,
+  type AdminFeedbackList,
+  type AdminFeedbackQuery,
   type AdminTracks,
+  type FeedbackStatus,
   type Dashboard,
   type EvalRun,
   type LatestEval,
@@ -48,5 +54,45 @@ export function startEval(body: StartEval, options: CallOptions = {}): Promise<E
     ...options,
     method: "POST",
     body,
+  });
+}
+
+/** The feedback inbox (docs/specs/14-cms.md §6), newest first. */
+export function getFeedbackInbox(
+  query: Partial<Pick<AdminFeedbackQuery, "type" | "status">> & {
+    cursor?: string | null;
+  },
+  options: CallOptions = {},
+): Promise<AdminFeedbackList> {
+  const params = new URLSearchParams();
+  if (query.type) params.set("type", query.type);
+  if (query.status) params.set("status", query.status);
+  if (query.cursor) params.set("cursor", query.cursor);
+  const search = params.size > 0 ? `?${params}` : "";
+  return apiRequest(`/v1/admin/feedback${search}`, adminFeedbackListSchema, options);
+}
+
+/** Resolves or reopens a bug report; approves or rejects a review (admins). */
+export function setFeedbackStatus(
+  id: string,
+  status: FeedbackStatus,
+  options: CallOptions = {},
+): Promise<AdminFeedbackItem> {
+  return apiRequest(
+    `/v1/admin/feedback/${encodeURIComponent(id)}`,
+    adminFeedbackItemSchema,
+    {
+      ...options,
+      method: "PATCH",
+      body: { status },
+    },
+  );
+}
+
+/** Deletes an item for good (admins), through the learner endpoint's admin rule. */
+export function deleteFeedback(id: string, options: CallOptions = {}): Promise<void> {
+  return apiRequest(`/v1/feedback/${encodeURIComponent(id)}`, null, {
+    ...options,
+    method: "DELETE",
   });
 }

@@ -1,0 +1,33 @@
+$kind: http-request
+name: Start a quiz
+order: 3100
+method: POST
+url: "{{baseUrl}}/api/v1/exams/attempts"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "topics": ["{{topicId}}"], "count": 5 }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('topicId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('draws questions without answers or explanations', () => {
+        pm.response.to.have.status(201);
+        const attempt = pm.response.json();
+        pm.expect(attempt.status).to.eql('in_progress');
+        pm.expect(attempt.questions.length).to.eql(attempt.total);
+        pm.expect(pm.response.text()).to.not.include('"answer"');
+        pm.expect(pm.response.text()).to.not.include('"explanation"');
+        pm.expect(Date.parse(attempt.expiresAt) - Date.parse(attempt.startedAt)).to.be.at.least(600000);
+        pm.collectionVariables.set('attemptId', attempt.id);
+        pm.collectionVariables.set('attemptTotal', String(attempt.total));
+      });

@@ -1,0 +1,33 @@
+$kind: http-request
+name: Report a problem with a step
+order: 4000
+method: POST
+url: "{{baseUrl}}/api/v1/feedback"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    {
+      "type": "bug",
+      "body": "Contract check: the description could name the expected dtype.",
+      "paperId": "{{paperId}}",
+      "problemId": "{{problemId}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('files an open bug report tagged with the step', () => {
+        pm.response.to.have.status(201);
+        const item = pm.response.json();
+        pm.expect(item.type).to.eql('bug');
+        pm.expect(item.status).to.eql('open');
+        pm.expect(item.rating).to.eql(null);
+        pm.expect(item.paperId).to.eql(pm.collectionVariables.get('paperId'));
+        pm.expect(item.problemId).to.eql(pm.collectionVariables.get('problemId'));
+        pm.collectionVariables.set('feedbackId', item.id);
+      });

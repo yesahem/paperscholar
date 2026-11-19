@@ -18,6 +18,7 @@ const NAVIGATION = [
   { href: "/", label: "Dashboard", role: "maintainer" },
   { href: "/papers", label: "Papers", role: "maintainer" },
   { href: "/tracks", label: "Tracks", role: "maintainer" },
+  { href: "/feedback", label: "Feedback", role: "maintainer" },
   { href: "/users", label: "Roles", role: "admin" },
   { href: "/eval", label: "Eval", role: "admin" },
 ] as const;

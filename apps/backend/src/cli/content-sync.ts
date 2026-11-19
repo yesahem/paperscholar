@@ -1,7 +1,8 @@
 /**
  * content:sync: publishes the repository's content library to content storage
  * (docs/specs/03-content.md §7). Only papers whose files changed get a new
- * version; papers made on this instance are never touched.
+ * version; papers made on this instance are never touched. Quiz topics in
+ * content/exams/ are uploaded the same way.
  *
  *   bun run content:sync [--content <dir>] [--dry-run]
  *
@@ -51,6 +52,11 @@ try {
     console.log(`  conflict   ${paperId}: ${reason}`);
   }
   console.log(`  tracks     ${report.tracks}`);
+  const { exams } = report;
+  console.log(
+    `  quizzes    ${exams.created.length} created, ${exams.updated.length} updated, ${exams.unchanged.length} unchanged, ${exams.removed.length} removed`,
+  );
+  for (const id of exams.removed) console.log(`  removed    quiz ${id}`);
 } finally {
   await services.close();
 }

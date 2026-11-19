@@ -33,6 +33,18 @@ variables:
   - key: verifiesEmail
     value: ""
     description: Set by "Create a run" from GET /v1/config.
+  - key: topicId
+    value: ""
+    description: Set by "List quiz topics" to the first topic, or blank when there is none.
+  - key: attemptId
+    value: ""
+    description: Set by "Start a quiz"; blank when the instance has no quiz topics.
+  - key: attemptTotal
+    value: ""
+    description: Set by "Start a quiz" to the number of questions served.
+  - key: feedbackId
+    value: ""
+    description: Set by "Report a problem with a step".
 scripts:
   - type: http:afterResponse
     language: text/javascript

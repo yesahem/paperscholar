@@ -30,6 +30,12 @@ const components: Components = {
     ),
 };
 
+/** Paragraphs become their contents, so a short phrase can sit inside a label. */
+const inlineComponents: Components = {
+  ...components,
+  p: ({ children }) => <>{children}</>,
+};
+
 /**
  * Renders authored markdown on the server (docs/specs/08-web.md §7): GitHub
  * flavoured markdown, maths with KaTeX, highlighted code. Raw HTML is dropped,
@@ -39,20 +45,26 @@ const components: Components = {
 export function Markdown({
   children,
   className,
+  inline = false,
 }: {
   children: string;
   className?: string;
+  /** A phrase rather than a document, such as a quiz option: rendered in a span, without paragraphs. */
+  inline?: boolean;
 }) {
-  return (
-    <div className={cn("markdown", className)}>
-      <ReactMarkdown
-        skipHtml
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex, [rehypeHighlight, { detect: false }]]}
-        components={components}
-      >
-        {children}
-      </ReactMarkdown>
-    </div>
+  const markdown = (
+    <ReactMarkdown
+      skipHtml
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex, [rehypeHighlight, { detect: false }]]}
+      components={inline ? inlineComponents : components}
+    >
+      {children}
+    </ReactMarkdown>
+  );
+  return inline ? (
+    <span className={className}>{markdown}</span>
+  ) : (
+    <div className={cn("markdown", className)}>{markdown}</div>
   );
 }

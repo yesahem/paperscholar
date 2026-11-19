@@ -63,6 +63,8 @@ describe("loadConfig", () => {
         runsPerMinute: 10,
         globalRunsPerDay: 20_000,
         mutationsPerMinute: 60,
+        examAttemptsPerDay: 20,
+        feedbackPerDay: 10,
       },
       runner: { provider: "local", pythonPath: null },
       internalSecret: null,
@@ -353,6 +355,8 @@ describe("runner configuration", () => {
       RUNS_PER_MINUTE: "5",
       GLOBAL_RUNS_PER_DAY: "1000",
       MUTATIONS_PER_MINUTE: "30",
+      EXAM_ATTEMPTS_PER_DAY: "3",
+      FEEDBACK_PER_DAY: "2",
       INTERNAL_SECRET: "i".repeat(32),
     });
     expect(config.limits).toEqual({
@@ -360,7 +364,12 @@ describe("runner configuration", () => {
       runsPerMinute: 5,
       globalRunsPerDay: 1000,
       mutationsPerMinute: 30,
+      examAttemptsPerDay: 3,
+      feedbackPerDay: 2,
     });
+    expect(problemsFor({ ...valid, EXAM_ATTEMPTS_PER_DAY: "0" })[0]).toStartWith(
+      "EXAM_ATTEMPTS_PER_DAY",
+    );
     expect(config.internalSecret).toBe("i".repeat(32));
     expect(problemsFor({ ...valid, INTERNAL_SECRET: "short" })[0]).toStartWith(
       "INTERNAL_SECRET must be at least 32",

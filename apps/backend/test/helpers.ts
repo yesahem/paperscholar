@@ -45,6 +45,8 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
     runsPerMinute: 10,
     globalRunsPerDay: 20_000,
     mutationsPerMinute: 60,
+    examAttemptsPerDay: 20,
+    feedbackPerDay: 10,
   },
   runner: { provider: "local", pythonPath: null },
   internalSecret: null,

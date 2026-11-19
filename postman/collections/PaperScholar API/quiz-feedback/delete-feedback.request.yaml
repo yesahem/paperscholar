@@ -1,0 +1,15 @@
+$kind: http-request
+name: Delete my report
+order: 4400
+method: DELETE
+url: "{{baseUrl}}/api/v1/feedback/{{feedbackId}}"
+headers:
+  - key: Origin
+    value: "{{webOrigin}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('deletes it', () => {
+        pm.response.to.have.status(204);
+      });
