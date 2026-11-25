@@ -22,6 +22,16 @@ describe("security headers", () => {
     expect(policy.match(/r2\.cloudflarestorage\.com/g)).toHaveLength(1);
   });
 
+  test("lecture videos play from this site, and from R2 when it is the media origin", () => {
+    expect(contentSecurityPolicy({ development: false })).toContain("media-src 'self';");
+    const policy = contentSecurityPolicy({
+      development: false,
+      mediaOrigin: "https://account.r2.cloudflarestorage.com",
+    });
+    expect(policy).toContain("media-src 'self' https://account.r2.cloudflarestorage.com");
+    expect(policy).not.toContain("connect-src 'self' https://account");
+  });
+
   test("the production policy loads only from this origin and reports violations", () => {
     const policy = contentSecurityPolicy({ development: false });
     expect(policy).toContain("default-src 'self'");

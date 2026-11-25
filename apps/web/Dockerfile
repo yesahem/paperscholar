@@ -19,11 +19,14 @@ ARG AVATAR_ORIGIN=
 ARG CMS_URL=
 # Only with files in R2: the S3 endpoint's origin, so PDFs can be uploaded to it directly.
 ARG UPLOAD_ORIGIN=
+# Only with files in R2: the S3 endpoint's origin, so lecture videos can play from it.
+ARG MEDIA_ORIGIN=
 ENV API_ORIGIN=$API_ORIGIN \
     NEXT_PUBLIC_SITE_URL=$SITE_URL \
     AVATAR_ORIGIN=$AVATAR_ORIGIN \
     NEXT_PUBLIC_CMS_URL=$CMS_URL \
     UPLOAD_ORIGIN=$UPLOAD_ORIGIN \
+    MEDIA_ORIGIN=$MEDIA_ORIGIN \
     NEXT_TELEMETRY_DISABLED=1
 RUN bun run --cwd apps/web build
 

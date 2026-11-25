@@ -1,14 +1,21 @@
 import { AwsClient } from "aws4fetch";
-import { PreconditionFailedError, StorageError } from "../errors";
+import {
+  PreconditionFailedError,
+  RangeNotSatisfiableError,
+  StorageError,
+} from "../errors";
 import { assertValidKey, assertValidPrefix } from "../keys";
 import type {
+  ByteRange,
   ConditionalGetResult,
   ObjectInfo,
   ObjectStorage,
+  PresignedDownload,
   PresignedUpload,
   PresignOptions,
   PutOptions,
   PutResult,
+  RangeRead,
   StoredObject,
 } from "../types";
 
@@ -212,6 +219,71 @@ export class S3Storage implements ObjectStorage {
       method: "PUT",
       headers,
       expiresAt: new Date(Date.now() + options.expiresInSeconds * 1000),
+    };
+  }
+
+  /** A query-signed GET that the service refuses after `expiresInSeconds`. */
+  async presignGet(
+    key: string,
+    expiresInSeconds: number,
+  ): Promise<PresignedDownload | null> {
+    const url = new URL(this.objectUrl(key));
+    url.searchParams.set("X-Amz-Expires", String(expiresInSeconds));
+    const signed = await this.client.sign(url.href, {
+      method: "GET",
+      aws: { signQuery: true },
+    });
+    return { url: signed.url, expiresAt: new Date(Date.now() + expiresInSeconds * 1000) };
+  }
+
+  /**
+   * Streams the object or a range of it. The timeout covers the response
+   * headers only, so a long body is not cut off part-way.
+   */
+  async getRange(key: string, range: ByteRange | null): Promise<RangeRead | null> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    let response: Response;
+    try {
+      response = await this.client.fetch(this.objectUrl(key), {
+        method: "GET",
+        headers: range ? { Range: `bytes=${range.start}-${range.end ?? ""}` } : {},
+        signal: controller.signal,
+      });
+    } catch (error) {
+      throw new StorageError(
+        `Storage request GET ${key} failed`,
+        { key },
+        { cause: error },
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (response.status === 404) return null;
+    if (response.status === 416) {
+      const total = Number(
+        /\/(\d+)$/.exec(response.headers.get("content-range") ?? "")?.[1] ?? 0,
+      );
+      await response.body?.cancel();
+      throw new RangeNotSatisfiableError(key, total);
+    }
+    if (!response.ok || !response.body) return this.failure(response, "Reading", key);
+    const etag = response.headers.get("etag") ?? "";
+    const length = Number(response.headers.get("content-length") ?? 0);
+    const contentRange = /bytes (\d+)-(\d+)\/(\d+)/.exec(
+      response.headers.get("content-range") ?? "",
+    );
+    const [start, end, totalSize] = contentRange
+      ? [Number(contentRange[1]), Number(contentRange[2]), Number(contentRange[3])]
+      : [0, Math.max(0, length - 1), length];
+    return {
+      key,
+      totalSize,
+      start,
+      end,
+      etag,
+      contentType: response.headers.get("content-type"),
+      body: response.body,
     };
   }
 

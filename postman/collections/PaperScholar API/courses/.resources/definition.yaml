@@ -1,0 +1,9 @@
+$kind: collection
+name: Courses
+description: |-
+  Courses (docs/specs/10-secondary-features.md §5), as a throwaway account
+  deleted at the end. On an instance without course content the feature is off
+  and every course endpoint answers 404; the signed-in requests are then
+  skipped. Video keys and exercise answers must never appear in a response
+  before an exercise is submitted.
+order: 3900

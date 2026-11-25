@@ -62,6 +62,7 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   },
   email: { driver: "none" },
   pipeline: { llm: null, enabled: false, limits: TEST_PIPELINE_LIMITS },
+  courses: { enabled: true },
   ...overrides,
 });
 
@@ -134,6 +135,12 @@ export function memoryAvatarStore(): AvatarStore & { objects: Map<string, Uint8A
         throw new Error("not used");
       },
       async presignPut() {
+        throw new Error("not used");
+      },
+      async presignGet() {
+        throw new Error("not used");
+      },
+      async getRange() {
         throw new Error("not used");
       },
       async put(key, body) {

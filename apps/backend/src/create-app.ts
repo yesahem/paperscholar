@@ -31,7 +31,9 @@ import { adminUserRoutes } from "./routes/admin/users";
 import { authRoutes } from "./routes/auth";
 import { avatarRoutes } from "./routes/avatars";
 import { configRoutes } from "./routes/config";
+import { coursesRoutes } from "./routes/courses";
 import { examsRoutes } from "./routes/exams";
+import { mediaRoutes } from "./routes/media";
 import { feedbackRoutes } from "./routes/feedback";
 import { cspReportRoutes } from "./routes/csp-reports";
 import { healthRoutes } from "./routes/health";
@@ -55,7 +57,9 @@ import { createFeedback } from "./services/feedback";
 import { createContentCatalog } from "./services/content-catalog";
 import { createIngestions, PDF_UPLOAD_PATH_PREFIX } from "./services/ingestions";
 import { PROMPT_VERSION } from "@repo/pipeline";
-import { instanceConfig } from "./services/instance-config";
+import { createInstanceFeatures } from "./services/instance-config";
+import { createCourses } from "./services/courses";
+import { createMediaUrls } from "./services/media";
 import { createLeaderboard } from "./services/leaderboard";
 import { createProfiles } from "./services/profiles";
 import { createRateLimiter } from "./services/rate-limiter";
@@ -146,6 +150,10 @@ export function createApp({
     attemptsPerDay: config.limits.examAttemptsPerDay,
     logger,
   });
+  const features = createInstanceFeatures(config, content);
+  const storage = createStorage(config.storage);
+  const media = createMediaUrls({ storage, secret: config.auth.secret });
+  const courses = createCourses({ db, content, storage, media });
   const feedback = createFeedback({
     db,
     content,
@@ -172,7 +180,7 @@ export function createApp({
   const contentWriter =
     pipeline?.deps.content ??
     new ContentStore({
-      storage: createStorage(config.storage),
+      storage,
       lock: createAdvisoryLock(db, CONTENT_INDEX_LOCK),
     });
   const adminPapers = createAdminPapers({ db, content: contentWriter });
@@ -210,7 +218,8 @@ export function createApp({
     .route("/admin/feedback", adminFeedbackRoutes(feedback, accounts.currentRole))
     .route("/papers", papersRoutes(catalog))
     .route("/tracks", tracksRoutes(catalog))
-    .route("/config", configRoutes(instanceConfig(config)))
+    .route("/config", configRoutes(features))
+    .route("/courses", coursesRoutes(courses, features.current))
     .route("/me", meRoutes(accounts, avatars, auth))
     .route("/submissions", submissionsRoutes(submissions, verifiesEmail(config)))
     .route("/progress", progressRoutes(db))
@@ -234,6 +243,7 @@ export function createApp({
     .route("/health", healthRoutes({ version: config.version }))
     .route("/csp-report", cspReportRoutes())
     .route("/avatars", avatarRoutes(avatarStore))
+    .route("/media", mediaRoutes(media, storage))
     .route("/auth", authRoutes(auth, config.webOrigin, config.cmsOrigin))
     .route(
       "/internal",

@@ -64,6 +64,13 @@
       "when": 1795126634977,
       "tag": "0008_quiz_feedback",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795601329184,
+      "tag": "0009_courses",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import { BookOpenText } from "lucide-react";
 import Link from "next/link";
 import { AccountControls } from "@/components/auth/account-controls";
 import { VerificationBanner } from "@/components/auth/verification-banner";
+import { CoursesNavLink } from "@/components/courses/courses-nav-link";
 import { ThemeToggle } from "@repo/web-core/theme/theme-toggle";
 import { loadWebEnv } from "@/lib/env";
 import { NavLink } from "./nav-link";
@@ -50,6 +51,7 @@ export function SiteHeader({ className }: { className?: string }) {
                 <NavLink href={item.href}>{item.label}</NavLink>
               </li>
             ))}
+            <CoursesNavLink />
           </ul>
         </nav>
         <a

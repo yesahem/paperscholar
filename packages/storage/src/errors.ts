@@ -25,3 +25,14 @@ export class InvalidKeyError extends StorageError {
     this.name = "InvalidKeyError";
   }
 }
+
+/** A byte range that starts at or past the end of the object (HTTP 416). */
+export class RangeNotSatisfiableError extends Error {
+  constructor(
+    readonly key: string,
+    readonly totalSize: number,
+  ) {
+    super(`The requested range of ${key} starts past its end (${totalSize} bytes)`);
+    this.name = "RangeNotSatisfiableError";
+  }
+}

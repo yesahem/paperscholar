@@ -4,8 +4,10 @@ import {
   type ConditionalGetResult,
   type ObjectInfo,
   type ObjectStorage,
+  type PresignedDownload,
   type PresignedUpload,
   type PutResult,
+  type RangeRead,
   type StoredObject,
 } from "@repo/storage";
 import { describe, expect, test } from "bun:test";
@@ -34,6 +36,12 @@ class UnreachableStorage implements ObjectStorage {
     return Promise.resolve().then(() => this.fail());
   }
   presignPut(): Promise<PresignedUpload | null> {
+    return Promise.resolve().then(() => this.fail());
+  }
+  presignGet(): Promise<PresignedDownload | null> {
+    return Promise.resolve().then(() => this.fail());
+  }
+  getRange(): Promise<RangeRead | null> {
     return Promise.resolve().then(() => this.fail());
   }
   list(): AsyncIterable<ObjectInfo> {

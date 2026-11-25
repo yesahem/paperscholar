@@ -42,6 +42,31 @@ export interface PresignOptions {
   expiresInSeconds: number;
 }
 
+/** A URL a browser can read one object from directly, until it expires. */
+export interface PresignedDownload {
+  url: string;
+  expiresAt: Date;
+}
+
+/** Bytes `start` to `end` inclusive; `end` null means to the end of the object. */
+export interface ByteRange {
+  start: number;
+  end: number | null;
+}
+
+/** Part of an object, streamed rather than held in memory (video, large files). */
+export interface RangeRead {
+  key: string;
+  /** Size of the whole object in bytes. */
+  totalSize: number;
+  /** First and last byte returned, inclusive. */
+  start: number;
+  end: number;
+  etag: string;
+  contentType: string | null;
+  body: ReadableStream<Uint8Array>;
+}
+
 /** Outcome of a conditional read. */
 export type ConditionalGetResult =
   | { status: "found"; object: StoredObject }
@@ -74,4 +99,15 @@ export interface ObjectStorage {
    * (`fs`, whose files only the API can write).
    */
   presignPut(key: string, options: PresignOptions): Promise<PresignedUpload | null>;
+  /**
+   * A presigned GET for one object that stops working after
+   * `expiresInSeconds`, or null when the driver cannot issue one (`fs`, whose
+   * files only the API can serve).
+   */
+  presignGet(key: string, expiresInSeconds: number): Promise<PresignedDownload | null>;
+  /**
+   * Streams the whole object, or one byte range of it. Null when the key does
+   * not exist. A range starting past the end throws RangeNotSatisfiableError.
+   */
+  getRange(key: string, range: ByteRange | null): Promise<RangeRead | null>;
 }

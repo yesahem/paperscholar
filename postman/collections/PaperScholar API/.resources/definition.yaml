@@ -45,6 +45,21 @@ variables:
   - key: feedbackId
     value: ""
     description: Set by "Report a problem with a step".
+  - key: coursesOn
+    value: ""
+    description: Set by "Are courses on" from GET /v1/config.
+  - key: courseId
+    value: ""
+    description: Set by "List courses" to the first course, or blank when courses are off.
+  - key: lectureId
+    value: ""
+    description: Set by "Course syllabus" to the course's first lecture, if any.
+  - key: exerciseId
+    value: ""
+    description: Set by "Course syllabus" to the course's first exercise, if any.
+  - key: exerciseLength
+    value: ""
+    description: Set by "Read an exercise" to its number of questions.
 scripts:
   - type: http:afterResponse
     language: text/javascript

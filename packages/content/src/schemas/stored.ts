@@ -220,3 +220,79 @@ export const examPrivateDocSchema = z.object({
   ),
 });
 export type ExamPrivateDoc = z.infer<typeof examPrivateDocSchema>;
+
+// ── Courses (docs/specs/10-secondary-features.md §5) ───────────────────────────
+
+/** One course in `content/courses/index.json`. */
+export const courseIndexEntrySchema = z.object({
+  id: slugSchema,
+  title: z.string(),
+  summary: z.string(),
+  lectureCount: z.number().int().min(0),
+  exerciseCount: z.number().int().min(0),
+  /** Seconds of video across the course's lectures. */
+  durationSeconds: z.number().int().min(0),
+  sourceHash: z.string(),
+});
+export type CourseIndexEntry = z.infer<typeof courseIndexEntrySchema>;
+
+/** `content/courses/index.json`, written after the courses' documents. */
+export const courseIndexSchema = z.object({
+  schemaVersion: z.literal(1),
+  updatedAt: isoTimestamp,
+  courses: z.array(courseIndexEntrySchema),
+});
+export type CourseIndex = z.infer<typeof courseIndexSchema>;
+
+const storedQuestionSchema = z.object({
+  id: slugSchema,
+  difficulty: difficultySchema,
+  prompt: z.string(),
+  options: z.array(z.string()),
+});
+
+/** `content/courses/<id>/public.json`: the syllabus and exercise questions, no answers, no video keys. */
+export const coursePublicDocSchema = z.object({
+  schemaVersion: z.literal(1),
+  courseId: slugSchema,
+  sourceHash: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  items: z.array(
+    z.discriminatedUnion("type", [
+      z.object({
+        id: slugSchema,
+        type: z.literal("lecture"),
+        title: z.string(),
+        durationSeconds: z.number().int().min(1),
+      }),
+      z.object({
+        id: slugSchema,
+        type: z.literal("exercise"),
+        title: z.string(),
+        questions: z.array(storedQuestionSchema),
+      }),
+    ]),
+  ),
+});
+export type CoursePublicDoc = z.infer<typeof coursePublicDocSchema>;
+
+/** `content/courses/<id>/private.json`: each lecture's video key and each exercise's answers. */
+export const coursePrivateDocSchema = z.object({
+  schemaVersion: z.literal(1),
+  courseId: slugSchema,
+  sourceHash: z.string(),
+  items: z.array(
+    z.discriminatedUnion("type", [
+      z.object({ id: slugSchema, type: z.literal("lecture"), videoKey: z.string() }),
+      z.object({
+        id: slugSchema,
+        type: z.literal("exercise"),
+        answers: z.array(
+          z.object({ id: slugSchema, answer: z.number().int().min(0), explanation: z.string() }),
+        ),
+      }),
+    ]),
+  ),
+});
+export type CoursePrivateDoc = z.infer<typeof coursePrivateDocSchema>;

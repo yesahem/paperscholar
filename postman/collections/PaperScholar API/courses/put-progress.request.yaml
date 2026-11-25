@@ -1,0 +1,28 @@
+$kind: http-request
+name: Save my place in a lecture
+order: 3300
+method: PUT
+url: "{{baseUrl}}/api/v1/courses/{{courseId}}/items/{{lectureId}}/progress"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "completed": false, "lastWatchedSeconds": 1 }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('lectureId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('records the position', () => {
+        pm.response.to.have.status(200);
+        const progress = pm.response.json();
+        pm.expect(progress.lastWatchedSeconds).to.eql(1);
+        pm.expect(progress.completed).to.eql(false);
+      });

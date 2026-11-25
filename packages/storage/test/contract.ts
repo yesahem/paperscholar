@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { InvalidKeyError, PreconditionFailedError, type ObjectStorage } from "../src";
+import {
+  InvalidKeyError,
+  PreconditionFailedError,
+  RangeNotSatisfiableError,
+  type ObjectStorage,
+} from "../src";
 
 const decode = (body: Uint8Array) => new TextDecoder().decode(body);
 
@@ -122,6 +127,45 @@ export function describeStorageContract(
         `${base}/papers/b/v1/public.json`,
       ]);
       expect(await collect(storage.list(`${base}/nothing-here/`))).toEqual([]);
+    });
+
+    test("streams the whole object or a byte range of it", async () => {
+      const { storage, base } = await createStorage();
+      const key = `${base}/video/clip.mp4`;
+      await storage.put(key, new TextEncoder().encode("0123456789"), {
+        contentType: "video/mp4",
+      });
+      const read = async (range: { start: number; end: number | null } | null) => {
+        const part = await storage.getRange(key, range);
+        if (!part) throw new Error("expected the object");
+        const text = await new Response(part.body).text();
+        return { text, start: part.start, end: part.end, totalSize: part.totalSize };
+      };
+      expect(await read(null)).toEqual({
+        text: "0123456789",
+        start: 0,
+        end: 9,
+        totalSize: 10,
+      });
+      expect(await read({ start: 2, end: 4 })).toEqual({
+        text: "234",
+        start: 2,
+        end: 4,
+        totalSize: 10,
+      });
+      expect(await read({ start: 7, end: null })).toEqual({
+        text: "789",
+        start: 7,
+        end: 9,
+        totalSize: 10,
+      });
+      // An end past the object is cut to the last byte, as HTTP does.
+      expect(await read({ start: 8, end: 100 })).toMatchObject({ text: "89", end: 9 });
+      expect((await storage.getRange(key, null))?.contentType).toStartWith("video/mp4");
+      expect(storage.getRange(key, { start: 10, end: null })).rejects.toThrow(
+        RangeNotSatisfiableError,
+      );
+      expect(await storage.getRange(`${base}/video/missing.mp4`, null)).toBeNull();
     });
 
     test("rejects keys that could escape the storage root", async () => {

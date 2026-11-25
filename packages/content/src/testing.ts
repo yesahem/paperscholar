@@ -107,3 +107,43 @@ export function examYaml(title: string, questionCount: number, prefix = "q"): st
   }
   return `${lines.join("\n")}\n`;
 }
+
+/** Marks a video key, so a test can prove keys never reach learners. */
+export const VIDEO_KEY_MARKER = "private-video-key";
+
+/**
+ * A course with two lectures and an exercise of two questions (answers 1 and
+ * 2). Video keys carry `VIDEO_KEY_MARKER` and explanations the canary.
+ */
+export function courseYaml(title = "Attention from Scratch", prefix = "attention"): string {
+  return `title: ${title}
+summary: Build attention up from dot products.
+items:
+  - id: why-attention
+    type: lecture
+    title: Why attention
+    video_key: ${prefix}/${VIDEO_KEY_MARKER}-intro.mp4
+    duration_seconds: 540
+  - id: check-1
+    type: exercise
+    title: Check your understanding
+    questions:
+      - id: q-1
+        difficulty: easy
+        prompt: "What does softmax make each row sum to?"
+        options: ["0", "1", "n"]
+        answer: 1
+        explanation: "Softmax normalises. ${CANARY}"
+      - id: q-2
+        difficulty: medium
+        prompt: "Why scale by $\\\\sqrt{d_k}$?"
+        options: [Speed, Memory, Keeps the softmax from saturating]
+        answer: 2
+        explanation: "Large dot products saturate the softmax. ${CANARY}"
+  - id: multi-head
+    type: lecture
+    title: Many heads
+    video_key: ${prefix}/${VIDEO_KEY_MARKER}-heads.mp4
+    duration_seconds: 600
+`;
+}

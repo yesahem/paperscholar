@@ -1,0 +1,34 @@
+$kind: http-request
+name: Submit an exercise
+order: 3200
+method: POST
+url: "{{baseUrl}}/api/v1/courses/{{courseId}}/items/{{exerciseId}}/exercise"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "answers": {{exerciseAnswers}} }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('exerciseId')) pm.execution.skipRequest();
+      const length = Number(pm.collectionVariables.get('exerciseLength'));
+      pm.variables.set('exerciseAnswers', JSON.stringify(Array.from({ length }, () => null)));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('grades it, with the answer and why for each question', () => {
+        pm.response.to.have.status(200);
+        const result = pm.response.json();
+        pm.expect(result.score).to.eql(0);
+        for (const question of result.questions) {
+          pm.expect(question.correct).to.eql(false);
+          pm.expect(question.answer).to.be.a('number');
+          pm.expect(question.explanation).to.be.a('string').and.not.empty;
+        }
+      });

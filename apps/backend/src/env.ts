@@ -111,6 +111,8 @@ const envSchema = z
     LLM_DRIVER: z.enum(LLM_DRIVERS).optional(),
     LLM_MODEL: z.string().trim().min(1).default(DEFAULT_LLM_MODEL),
     FEATURE_PIPELINE: envBooleanSchema.default(true),
+    /** FEATURE_COURSES=false hides courses even when course content exists. */
+    FEATURE_COURSES: envBooleanSchema.default(true),
     PIPELINE_MAX_PDF_MB: positiveCount(PIPELINE_DEFAULTS.maxPdfBytes / 1024 / 1024),
     PIPELINE_MAX_PDF_PAGES: positiveCount(PIPELINE_DEFAULTS.maxPdfPages),
     PIPELINE_MIN_STEPS: positiveCount(PIPELINE_DEFAULTS.minSteps),
@@ -558,6 +560,8 @@ export interface AppConfig {
   email: EmailConfig;
   /** The paper pipeline: its model and limits. */
   pipeline: PipelineConfig;
+  /** Courses are offered when this is true and course content exists (docs/specs/13-self-hosting.md §4). */
+  courses: { enabled: boolean };
 }
 
 /**
@@ -612,6 +616,7 @@ export function loadConfig(
     },
     email: emailConfig(env),
     pipeline: pipelineConfig(env),
+    courses: { enabled: env.FEATURE_COURSES },
   };
 }
 

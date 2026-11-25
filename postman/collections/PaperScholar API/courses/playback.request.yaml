@@ -1,0 +1,24 @@
+$kind: http-request
+name: Play a lecture
+order: 3000
+method: GET
+url: "{{baseUrl}}/api/v1/courses/{{courseId}}/items/{{lectureId}}/playback"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('lectureId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('gives a five-minute URL, or says the video is not uploaded yet', () => {
+        if (pm.response.code === 404) {
+          pm.expect(pm.response.json().error.message).to.include('not available yet');
+          return;
+        }
+        pm.response.to.have.status(200);
+        const playback = pm.response.json();
+        pm.expect(playback.expiresInSeconds).to.eql(300);
+        pm.expect(playback.url).to.be.a('string').and.not.empty;
+        pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store');
+      });

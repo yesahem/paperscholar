@@ -1,0 +1,27 @@
+$kind: http-request
+name: Save a note
+order: 3400
+method: PUT
+url: "{{baseUrl}}/api/v1/courses/{{courseId}}/items/{{lectureId}}/notes"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    { "body": "Contract check note." }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('lectureId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('saves the note', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().body).to.eql('Contract check note.');
+        pm.expect(pm.response.json().updatedAt).to.be.a('string');
+      });

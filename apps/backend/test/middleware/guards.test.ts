@@ -132,12 +132,13 @@ describe("requireFeature", () => {
   test("404 when the feature is off on this instance", async () => {
     const off = await guarded(
       user(),
-      requireFeature(features(false), "pipeline"),
+      requireFeature(async () => features(false), "pipeline"),
     ).request("/");
     expect(off.status).toBe(404);
-    const on = await guarded(user(), requireFeature(features(true), "pipeline")).request(
-      "/",
-    );
+    const on = await guarded(
+      user(),
+      requireFeature(async () => features(true), "pipeline"),
+    ).request("/");
     expect(on.status).toBe(200);
   });
 });

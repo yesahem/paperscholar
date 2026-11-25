@@ -34,6 +34,7 @@ const nextConfig: NextConfig = {
           development: process.env.NODE_ENV === "development",
           avatarOrigin: env.AVATAR_ORIGIN,
           uploadOrigin: env.UPLOAD_ORIGIN,
+          mediaOrigin: env.MEDIA_ORIGIN,
         }),
       },
       {

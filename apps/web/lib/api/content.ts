@@ -1,10 +1,14 @@
 import "server-only";
 
 import {
+  courseDetailSchema,
+  courseListSchema,
   paperDetailSchema,
   paperListSchema,
   problemDetailSchema,
   trackListSchema,
+  type CourseDetail,
+  type CourseSummary,
   type PaperDetail,
   type PaperSummary,
   type ProblemDetail,
@@ -59,6 +63,19 @@ export function getProblem(
 
 export async function getTracks(): Promise<Track[]> {
   return (await getContent("/tracks", trackListSchema))?.items ?? [];
+}
+
+/**
+ * Courses, or null when this instance offers none: the API answers 404 while
+ * the feature is off (docs/specs/10-secondary-features.md §5).
+ */
+export async function getCourses(): Promise<CourseSummary[] | null> {
+  return (await getContent("/courses", courseListSchema))?.items ?? null;
+}
+
+/** Null when the course does not exist, or courses are off. */
+export function getCourse(courseId: string): Promise<CourseDetail | null> {
+  return getContent(`/courses/${encodeURIComponent(courseId)}`, courseDetailSchema);
 }
 
 /** Returned by `loadAtBuild` when the API could not be reached during `next build`. */

@@ -49,10 +49,14 @@ export function requireRole(
   });
 }
 
-/** `404 not_found` when `feature` is off on this instance (docs/specs/13-self-hosting.md §4). */
-export function requireFeature(features: FeatureFlags, feature: Feature) {
+/**
+ * `404 not_found` when `feature` is off on this instance
+ * (docs/specs/13-self-hosting.md §4). Flags are read per request, because
+ * some follow content (courses are on once course content exists).
+ */
+export function requireFeature(features: () => Promise<FeatureFlags>, feature: Feature) {
   return createMiddleware<AppEnv>(async (_c, next) => {
-    if (!features[feature]) throw new AppError("not_found");
+    if (!(await features())[feature]) throw new AppError("not_found");
     await next();
   });
 }

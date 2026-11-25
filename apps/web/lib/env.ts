@@ -25,6 +25,13 @@ const envSchema = z.object({
    * where uploads go through this site.
    */
   UPLOAD_ORIGIN: httpOriginSchema.optional(),
+  /**
+   * Origin lecture videos are played from when the backend stores files in R2
+   * (its S3 endpoint): playback URLs are presigned there. Allowed as a media
+   * source by the Content-Security-Policy. Unset with fs storage, where videos
+   * come through this site.
+   */
+  MEDIA_ORIGIN: httpOriginSchema.optional(),
 });
 
 export type WebEnv = z.output<typeof envSchema>;

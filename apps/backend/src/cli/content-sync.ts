@@ -2,7 +2,8 @@
  * content:sync: publishes the repository's content library to content storage
  * (docs/specs/03-content.md §7). Only papers whose files changed get a new
  * version; papers made on this instance are never touched. Quiz topics in
- * content/exams/ are uploaded the same way.
+ * content/exams/ and courses in content/courses/ are uploaded the same way;
+ * lectures whose video is not in storage yet are listed.
  *
  *   bun run content:sync [--content <dir>] [--dry-run]
  *
@@ -57,6 +58,16 @@ try {
     `  quizzes    ${exams.created.length} created, ${exams.updated.length} updated, ${exams.unchanged.length} unchanged, ${exams.removed.length} removed`,
   );
   for (const id of exams.removed) console.log(`  removed    quiz ${id}`);
+  const { courses } = report;
+  console.log(
+    `  courses    ${courses.created.length} created, ${courses.updated.length} updated, ${courses.unchanged.length} unchanged, ${courses.removed.length} removed`,
+  );
+  for (const id of courses.removed) console.log(`  removed    course ${id}`);
+  for (const { courseId, itemId, key } of courses.missingVideos) {
+    console.log(
+      `  no video   ${courseId}/${itemId}: add ${key} (bun run video:put <file> ${key.slice("video/".length)})`,
+    );
+  }
 } finally {
   await services.close();
 }

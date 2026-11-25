@@ -16,12 +16,15 @@ export interface PolicyOptions {
   avatarOrigin?: string;
   /** Where maintainers' browsers upload PDFs directly (the R2 S3 endpoint), if anywhere. */
   uploadOrigin?: string;
+  /** Where lecture videos are played from when not this site (the R2 S3 endpoint). */
+  mediaOrigin?: string;
 }
 
 export function contentSecurityPolicy({
   development,
   avatarOrigin,
   uploadOrigin,
+  mediaOrigin,
 }: PolicyOptions): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
@@ -36,6 +39,8 @@ export function contentSecurityPolicy({
     // blob: shows an avatar chosen for upload before it is sent.
     "img-src": ["'self'", "data:", "blob:", ...(avatarOrigin ? [avatarOrigin] : [])],
     "font-src": ["'self'", "data:"],
+    // Lecture videos: from this site (fs storage) or presigned R2 URLs.
+    "media-src": ["'self'", ...(mediaOrigin ? [mediaOrigin] : [])],
     "connect-src": [
       "'self'",
       ...(uploadOrigin ? [uploadOrigin] : []),

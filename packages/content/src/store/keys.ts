@@ -31,3 +31,16 @@ export const EXAM_INDEX_KEY = "content/exams/index.json";
 export function examKey(topicId: string, part: DocumentPart): string {
   return `content/exams/${topicId}/${part}.json`;
 }
+
+/** `content/courses/index.json`: the courses (docs/specs/03-content.md §2.1). */
+export const COURSE_INDEX_KEY = "content/courses/index.json";
+
+/** `content/courses/<courseId>/<part>.json` */
+export function courseKey(courseId: string, part: DocumentPart): string {
+  return `content/courses/${courseId}/${part}.json`;
+}
+
+/** Where a lecture's video lives: `video/<videoKey>` in the private bucket. */
+export function videoObjectKey(videoKey: string): string {
+  return `video/${videoKey}`;
+}

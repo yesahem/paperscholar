@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { ContentValidationError, readContentLibrary } from "../src";
 import {
   baseLibrary,
+  courseYaml,
   examYaml,
   problemFiles,
   writeLibrary,
@@ -182,5 +183,45 @@ describe("readContentLibrary: quiz topics", () => {
     expect(joined).toContain("content/exams/Bad_Name.yaml: topic id");
     expect(joined).toContain("content/exams/notes.txt: quiz topics are .yaml files");
     expect(joined).toContain("content/exams/repeated.yaml: questions: must not repeat question ids");
+  });
+});
+
+describe("readContentLibrary: courses", () => {
+  test("reads each courses/<id>/course.yaml with camelCase items", async () => {
+    const library = await read({ ...baseLibrary(), "courses/attention/course.yaml": courseYaml() });
+    expect(library.courses.map((course) => course.id)).toEqual(["attention"]);
+    expect(library.courses[0]?.items[0]).toEqual({
+      id: "why-attention",
+      type: "lecture",
+      title: "Why attention",
+      videoKey: "attention/private-video-key-intro.mp4",
+      durationSeconds: 540,
+    });
+  });
+
+  test("names the file for every invalid course", async () => {
+    const lecture = (fields: string) =>
+      `title: Bad\nsummary: S.\nitems:\n  - id: one\n    type: lecture\n    title: One\n${fields}`;
+    const issues = await issuesOf({
+      ...baseLibrary(),
+      "courses/escape/course.yaml": lecture(
+        "    video_key: ../secrets/key.mp4\n    duration_seconds: 60\n",
+      ),
+      "courses/not-mp4/course.yaml": lecture(
+        "    video_key: talks/one.mov\n    duration_seconds: 60\n",
+      ),
+      "courses/no-duration/course.yaml": lecture("    video_key: talks/one.mp4\n"),
+      "courses/extra-file/course.yaml": courseYaml(),
+      "courses/extra-file/notes.md": "notes",
+      "courses/Bad_Name/course.yaml": courseYaml(),
+      "courses/repeated/course.yaml": `title: R\nsummary: S.\nitems:\n  - id: a\n    type: lecture\n    title: A\n    video_key: a.mp4\n    duration_seconds: 1\n  - id: a\n    type: lecture\n    title: B\n    video_key: b.mp4\n    duration_seconds: 1\n`,
+    });
+    const joined = issues.join("\n");
+    expect(joined).toContain("content/courses/escape/course.yaml: items.0");
+    expect(joined).toContain("content/courses/not-mp4/course.yaml: items.0");
+    expect(joined).toContain("content/courses/no-duration/course.yaml: items.0");
+    expect(joined).toContain("content/courses/extra-file/notes.md: is not a recognised course file");
+    expect(joined).toContain("content/courses/Bad_Name: course id");
+    expect(joined).toContain("content/courses/repeated/course.yaml: items: must not repeat item ids");
   });
 });

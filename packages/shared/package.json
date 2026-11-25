@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./accounts": "./src/accounts.ts",
     "./arxiv": "./src/arxiv.ts",
+    "./courses": "./src/courses.ts",
     "./errors": "./src/errors.ts",
     "./exams": "./src/exams.ts",
     "./feedback": "./src/feedback.ts",

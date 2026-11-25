@@ -1,0 +1,15 @@
+$kind: http-request
+name: Are courses on
+order: 1000
+method: GET
+url: "{{baseUrl}}/api/v1/config"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('says whether this instance offers courses', () => {
+        pm.response.to.have.status(200);
+        const on = pm.response.json().features.courses;
+        pm.expect(on).to.be.a('boolean');
+        pm.collectionVariables.set('coursesOn', String(on));
+      });

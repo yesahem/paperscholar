@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { hashFiles, type HashableFile } from "../hash";
 import { findRawHtml } from "../markdown";
 import {
+  courseFileSchema,
   examFileSchema,
   paperFileSchema,
   problemFileSchema,
@@ -13,6 +14,7 @@ import {
   type ProblemFile,
   type TrackFile,
 } from "../schemas/source";
+import type { LibraryCourse } from "../store/course-store";
 import type { LibraryExam } from "../store/exam-store";
 import { ContentValidationError, type ContentIssue } from "./errors";
 
@@ -48,11 +50,15 @@ export interface SourceTrack {
 /** A quiz topic from `exams/<topic>.yaml`. */
 export type SourceExam = LibraryExam;
 
+/** A course from `courses/<course-id>/course.yaml`. */
+export type SourceCourse = LibraryCourse;
+
 export interface ContentLibrary {
   papers: SourcePaper[];
   tracks: SourceTrack[];
   tracksHash: string;
   exams: SourceExam[];
+  courses: SourceCourse[];
 }
 
 const PROBLEM_FOLDER = /^(\d{2})-(.+)$/;
@@ -346,6 +352,38 @@ class LibraryReader {
     }
     return exams;
   }
+
+  /** Courses, one folder each with a course.yaml (docs/specs/10-secondary-features.md §5). */
+  async readCourses(): Promise<SourceCourse[]> {
+    const courses: SourceCourse[] = [];
+    for (const id of await listDirectories(join(this.root, "courses"))) {
+      const directory = join(this.root, "courses", id);
+      if (!this.checkSlug(directory, id, "course")) continue;
+      for (const file of await listFiles(directory)) {
+        if (file !== "course.yaml") {
+          this.issue(join(directory, file), "is not a recognised course file");
+        }
+      }
+      const path = join(directory, "course.yaml");
+      const meta = await this.yaml(path, courseFileSchema);
+      if (!meta) continue;
+      for (const item of meta.items) {
+        if (item.type !== "exercise") continue;
+        for (const question of item.questions) {
+          this.checkMarkdown(path, question.prompt);
+          this.checkMarkdown(path, question.explanation);
+        }
+      }
+      courses.push({
+        id,
+        title: meta.title,
+        summary: meta.summary,
+        items: meta.items,
+        sourceHash: hashFiles([{ path: "course.yaml", content: (await this.text(path)) ?? "" }]),
+      });
+    }
+    return courses;
+  }
 }
 
 /**
@@ -371,7 +409,8 @@ export async function readContentLibrary(root: string): Promise<ContentLibrary> 
   );
 
   const exams = await reader.readExams();
+  const courses = await reader.readCourses();
 
   if (reader.issues.length > 0) throw new ContentValidationError(reader.issues);
-  return { papers, tracks, tracksHash: hash, exams };
+  return { papers, tracks, tracksHash: hash, exams, courses };
 }

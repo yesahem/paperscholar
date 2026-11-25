@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import {
+  getCourses,
   getPaper,
   getPapers,
   loadAtBuild,
@@ -32,6 +33,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return Promise.all(list.map((paper) => getPaper(paper.id)));
   });
   if (papers === UNAVAILABLE_AT_BUILD) return entries;
+
+  // Courses are listed only on an instance that offers them.
+  const courses = await loadAtBuild(getCourses);
+  if (courses !== UNAVAILABLE_AT_BUILD && courses !== null) {
+    entries.push({ url: `${origin}/courses` });
+    for (const course of courses) entries.push({ url: `${origin}/courses/${course.id}` });
+  }
 
   for (const paper of papers) {
     if (!paper) continue;

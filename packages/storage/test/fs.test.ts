@@ -55,3 +55,11 @@ describe("fs presigned uploads", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("fs presigned downloads", () => {
+  test("there are none: the API serves files itself", async () => {
+    const { storage }: { storage: ObjectStorage } = await freshStorage();
+    expect(await storage.presignGet("video/a.mp4", 300)).toBeNull();
+    expect(storage.presignGet("../escape.mp4", 300)).rejects.toThrow();
+  });
+});

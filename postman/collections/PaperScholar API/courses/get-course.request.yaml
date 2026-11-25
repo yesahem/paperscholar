@@ -1,0 +1,25 @@
+$kind: http-request
+name: Course syllabus
+order: 1200
+method: GET
+url: "{{baseUrl}}/api/v1/courses/{{courseId}}"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('courseId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists the items without video keys or answers', () => {
+        pm.response.to.have.status(200);
+        const course = pm.response.json();
+        const text = pm.response.text();
+        pm.expect(text).to.not.include('videoKey');
+        pm.expect(text).to.not.include('video_key');
+        pm.expect(text).to.not.include('"answer"');
+        const lecture = course.items.find((item) => item.type === 'lecture');
+        const exercise = course.items.find((item) => item.type === 'exercise');
+        pm.collectionVariables.set('lectureId', lecture ? lecture.id : '');
+        pm.collectionVariables.set('exerciseId', exercise ? exercise.id : '');
+      });

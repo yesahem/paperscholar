@@ -1,0 +1,17 @@
+$kind: http-request
+name: Play a lecture when signed out
+order: 1300
+method: GET
+url: "{{baseUrl}}/api/v1/courses/{{courseId}}/items/{{lectureId}}/playback"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('lectureId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is unauthenticated', () => {
+        pm.response.to.have.status(401);
+        pm.expect(pm.response.json().error.code).to.eql('unauthenticated');
+      });

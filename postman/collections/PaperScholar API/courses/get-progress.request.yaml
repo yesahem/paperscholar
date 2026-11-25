@@ -1,0 +1,23 @@
+$kind: http-request
+name: My progress in the course
+order: 3500
+method: GET
+url: "{{baseUrl}}/api/v1/courses/{{courseId}}/progress"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('courseId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists what this account started and completed', () => {
+        pm.response.to.have.status(200);
+        const items = pm.response.json().items;
+        const lecture = items.find((item) => item.itemId === pm.collectionVariables.get('lectureId'));
+        if (lecture) pm.expect(lecture.lastWatchedSeconds).to.eql(1);
+        const exerciseId = pm.collectionVariables.get('exerciseId');
+        if (exerciseId) {
+          pm.expect(items.find((item) => item.itemId === exerciseId).completed).to.eql(true);
+        }
+      });

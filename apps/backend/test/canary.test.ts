@@ -6,6 +6,7 @@ import {
   submissionCreatedSchema,
 } from "@repo/shared";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { VIDEO_KEY_MARKER } from "@repo/content/testing";
 import { TestBrowser } from "./auth-client";
 import { CANARY, syncedContent, type SyncedContent } from "./content-fixture";
 import { DATABASE_URL, useTestDatabase } from "./database";
@@ -23,6 +24,8 @@ const fixedPaths = [
   "/api/v1/papers",
   "/api/v1/tracks",
   "/api/v1/exams/topics",
+  "/api/v1/courses",
+  "/api/v1/courses/attention",
 ];
 
 let content: SyncedContent;
@@ -57,7 +60,11 @@ describe("private-content canary", () => {
     for (const path of paths) {
       const res = await app.request(path);
       expect({ path, status: res.status }).toEqual({ path, status: 200 });
-      expect({ path, leaked: (await res.text()).includes(CANARY) }).toEqual({
+      const body = await res.text();
+      expect({
+        path,
+        leaked: body.includes(CANARY) || body.includes(VIDEO_KEY_MARKER),
+      }).toEqual({
         path,
         leaked: false,
       });
@@ -65,7 +72,7 @@ describe("private-content canary", () => {
   });
 });
 
-describe.skipIf(!DATABASE_URL)("private-content canary in quiz attempts", () => {
+describe.skipIf(!DATABASE_URL)("private-content canary in quizzes and courses", () => {
   const database = useTestDatabase();
 
   test("answers and explanations appear in no response before an attempt is graded", async () => {
@@ -88,12 +95,19 @@ describe.skipIf(!DATABASE_URL)("private-content canary in quiz attempts", () => 
     for (const path of [
       `/api/v1/exams/attempts/${attempt.id}`,
       "/api/v1/exams/attempts",
+      "/api/v1/courses/attention/items/check-1/exercise",
+      "/api/v1/courses/attention/progress",
+      "/api/v1/courses/attention/items/why-attention/notes",
     ]) {
       const body = await (await browser.request(path)).text();
       expect({ path, leaked: body.includes(CANARY) }).toEqual({ path, leaked: false });
       expect({ path, answers: body.includes('"answer"') }).toEqual({
         path,
         answers: false,
+      });
+      expect({ path, videoKey: body.includes(VIDEO_KEY_MARKER) }).toEqual({
+        path,
+        videoKey: false,
       });
     }
   });

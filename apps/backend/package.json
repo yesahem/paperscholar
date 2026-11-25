@@ -15,7 +15,8 @@
     "content:status": "bun run src/cli/content-status.ts",
     "admin:grant": "bun run src/cli/admin-grant.ts",
     "admin:password": "bun run src/cli/admin-password.ts",
-    "auth:schema": "auth generate --config scripts/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes && bun scripts/auth-schema-timestamptz.ts ../../packages/db/src/schema/auth.ts && prettier --write ../../packages/db/src/schema/auth.ts"
+    "auth:schema": "auth generate --config scripts/auth-schema.config.ts --output ../../packages/db/src/schema/auth.ts --yes && bun scripts/auth-schema-timestamptz.ts ../../packages/db/src/schema/auth.ts && prettier --write ../../packages/db/src/schema/auth.ts",
+    "video:put": "bun run src/cli/video-put.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.8.0",

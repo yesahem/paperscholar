@@ -34,6 +34,7 @@ import {
   TRACKS_KEY,
   type DocumentPart,
 } from "./keys";
+import { CourseStore } from "./course-store";
 import { ExamStore } from "./exam-store";
 import type { IndexLock } from "./lock";
 import { LruCache } from "./lru-cache";
@@ -148,6 +149,8 @@ export class ContentStore {
   private readonly privateDocs: LruCache<PaperPrivateDoc>;
   /** Quiz sets, in the same storage and under the same lock (docs/specs/10-secondary-features.md §1). */
   readonly exams: ExamStore;
+  /** Courses, in the same storage and under the same lock (docs/specs/10-secondary-features.md §5). */
+  readonly courses: CourseStore;
 
   constructor(options: ContentStoreOptions) {
     this.storage = options.storage;
@@ -156,12 +159,14 @@ export class ContentStore {
     this.indexTtlMs = options.indexTtlMs ?? 30_000;
     this.publicDocs = new LruCache(options.maxCachedDocuments ?? 200);
     this.privateDocs = new LruCache(options.maxCachedDocuments ?? 200);
-    this.exams = new ExamStore({
+    const parts = {
       storage: this.storage,
       lock: this.lock,
       now: this.now,
       indexTtlMs: this.indexTtlMs,
-    });
+    };
+    this.exams = new ExamStore(parts);
+    this.courses = new CourseStore(parts);
   }
 
   /** The catalogue. `fresh` bypasses the cache (still a conditional read). */

@@ -86,3 +86,30 @@ describe.skipIf(!configured)("s3 presigned uploads", () => {
     await s3.delete(key);
   });
 });
+
+describe.skipIf(!configured)("s3 presigned downloads", () => {
+  test("a browser can GET the object, and seek in it, until the URL expires", async () => {
+    if (!storage) throw new Error("S3 test server is not configured");
+    bucketReady ??= storage.createBucketIfMissing();
+    await bucketReady;
+    const key = `run-${crypto.randomUUID()}/video/clip.mp4`;
+    await storage.put(key, new TextEncoder().encode("0123456789"), {
+      contentType: "video/mp4",
+    });
+
+    const download = await storage.presignGet(key, 1);
+    if (!download) throw new Error("the s3 driver should presign");
+    expect(download.url).toContain("X-Amz-Expires=1");
+    const whole = await fetch(download.url);
+    expect(await whole.text()).toBe("0123456789");
+    const part = await fetch(download.url, { headers: { Range: "bytes=3-5" } });
+    expect(part.status).toBe(206);
+    expect(await part.text()).toBe("345");
+
+    await Bun.sleep(2100);
+    const expired = await fetch(download.url);
+    expect(expired.ok).toBe(false);
+    await expired.body?.cancel();
+    await storage.delete(key);
+  });
+});

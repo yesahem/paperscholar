@@ -2,6 +2,7 @@ import { toStoredProblem } from "./build-documents";
 import type { StoredProblemPrivate, StoredProblemPublic } from "./schemas/stored";
 import type { ContentLibrary, SourcePaper } from "./source/read-library";
 import type { ContentStore } from "./store/content-store";
+import type { CourseSyncReport } from "./store/course-store";
 import type { ExamSyncReport } from "./store/exam-store";
 
 export interface SyncConflict {
@@ -19,6 +20,8 @@ export interface SyncReport {
   tracks: "created" | "updated" | "unchanged";
   /** Quiz topics (docs/specs/10-secondary-features.md §1). */
   exams: ExamSyncReport;
+  /** Courses (docs/specs/10-secondary-features.md §5), with lectures whose video is missing. */
+  courses: CourseSyncReport;
   dryRun: boolean;
 }
 
@@ -96,6 +99,7 @@ export async function syncLibrary(
     retired: [],
     tracks: "unchanged",
     exams: { created: [], updated: [], unchanged: [], removed: [] },
+    courses: { created: [], updated: [], unchanged: [], removed: [], missingVideos: [] },
     dryRun,
   };
   const index = await store.getIndex({ fresh: true });
@@ -144,6 +148,7 @@ export async function syncLibrary(
     { dryRun },
   );
   report.exams = await store.exams.syncLibrary(library.exams, { dryRun });
+  report.courses = await store.courses.syncLibrary(library.courses, { dryRun });
 
   return report;
 }

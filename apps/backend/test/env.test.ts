@@ -85,6 +85,13 @@ describe("loadConfig", () => {
       email: { driver: "log" },
       // No model, no pipeline.
       pipeline: { llm: null, enabled: false, limits: TEST_PIPELINE_LIMITS },
+      courses: { enabled: true },
+    });
+  });
+
+  test("FEATURE_COURSES=false switches courses off", () => {
+    expect(loadConfig({ ...valid, FEATURE_COURSES: "false" }).courses).toEqual({
+      enabled: false,
     });
   });
 

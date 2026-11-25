@@ -1,0 +1,20 @@
+$kind: http-request
+name: Read an exercise
+order: 3100
+method: GET
+url: "{{baseUrl}}/api/v1/courses/{{courseId}}/items/{{exerciseId}}/exercise"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('exerciseId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('shows the questions without answers or explanations', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().questions.length).to.be.above(0);
+        pm.expect(pm.response.text()).to.not.include('"answer"');
+        pm.expect(pm.response.text()).to.not.include('"explanation"');
+        pm.collectionVariables.set('exerciseLength', String(pm.response.json().questions.length));
+      });

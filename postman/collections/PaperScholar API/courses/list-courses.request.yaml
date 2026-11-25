@@ -1,0 +1,28 @@
+$kind: http-request
+name: List courses
+order: 1100
+method: GET
+url: "{{baseUrl}}/api/v1/courses"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.collectionVariables.get('coursesOn') !== 'true') {
+        pm.test('is not found while courses are off', () => {
+          pm.response.to.have.status(404);
+          pm.expect(pm.response.json().error.code).to.eql('not_found');
+        });
+        pm.collectionVariables.set('courseId', '');
+        return;
+      }
+      pm.test('lists courses publicly and cacheably', () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.headers.get('Cache-Control')).to.include('public');
+        const { items } = pm.response.json();
+        pm.expect(items.length).to.be.above(0);
+        for (const course of items) {
+          pm.expect(course.durationSeconds).to.be.a('number');
+          pm.expect(course.lectureCount + course.exerciseCount).to.be.above(0);
+        }
+        pm.collectionVariables.set('courseId', items[0].id);
+      });

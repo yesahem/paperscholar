@@ -1,16 +1,23 @@
 import { randomUUID } from "node:crypto";
 import { link, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { PreconditionFailedError, StorageError } from "../errors";
+import {
+  PreconditionFailedError,
+  RangeNotSatisfiableError,
+  StorageError,
+} from "../errors";
 import { KeyedMutex } from "../keyed-mutex";
 import { assertValidKey, assertValidPrefix, contentTypeForKey } from "../keys";
 import type {
+  ByteRange,
   ConditionalGetResult,
   ObjectInfo,
   ObjectStorage,
+  PresignedDownload,
   PresignedUpload,
   PutOptions,
   PutResult,
+  RangeRead,
   StoredObject,
 } from "../types";
 
@@ -140,6 +147,35 @@ export class FsStorage implements ObjectStorage {
   async presignPut(key: string): Promise<PresignedUpload | null> {
     assertValidKey(key);
     return null;
+  }
+
+  /** Files on disk have no public URL; the API serves them itself. */
+  async presignGet(key: string): Promise<PresignedDownload | null> {
+    assertValidKey(key);
+    return null;
+  }
+
+  async getRange(key: string, range: ByteRange | null): Promise<RangeRead | null> {
+    const path = this.pathFor(key);
+    const info = await this.infoAt(key, path);
+    if (!info) return null;
+    const start = range?.start ?? 0;
+    if (start >= info.size && !(start === 0 && info.size === 0)) {
+      throw new RangeNotSatisfiableError(key, info.size);
+    }
+    const last = Math.max(0, info.size - 1);
+    const end = Math.min(range?.end ?? last, last);
+    return {
+      key,
+      totalSize: info.size,
+      start,
+      end,
+      etag: info.etag,
+      contentType: contentTypeForKey(key),
+      body: Bun.file(path)
+        .slice(start, info.size === 0 ? 0 : end + 1)
+        .stream(),
+    };
   }
 
   async delete(key: string): Promise<void> {

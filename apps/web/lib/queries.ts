@@ -4,6 +4,7 @@ import type { LeaderboardSort } from "@repo/shared/progress";
 import { sessionQueryKeys, useMe } from "@repo/web-core/queries/session";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { getCourseProgress, getExercise, getNote, getPlayback } from "@/lib/api/courses";
 import { getExamAttempts, getExamTopics } from "@/lib/api/exams";
 import { getMyFeedback, getReviews } from "@/lib/api/feedback";
 import { getLeaderboard, getLeaderboardRank, getProgress } from "@/lib/api/progress";
@@ -28,6 +29,13 @@ export const queryKeys = {
   examAttempts: ["exams", "attempts"] as const,
   reviews: ["feedback", "reviews"] as const,
   myFeedback: ["feedback", "mine"] as const,
+  courseProgress: (courseId: string) => ["courses", courseId, "progress"] as const,
+  exercise: (courseId: string, itemId: string) =>
+    ["courses", courseId, "exercise", itemId] as const,
+  note: (courseId: string, itemId: string) =>
+    ["courses", courseId, "note", itemId] as const,
+  playback: (courseId: string, itemId: string) =>
+    ["courses", courseId, "playback", itemId] as const,
 };
 
 /** Never retry an answer the API gave on purpose (a 4xx); retry network trouble twice. */
@@ -147,6 +155,50 @@ export function useMyFeedback(enabled: boolean) {
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextCursor,
     enabled,
+    retry: retryUnlessRefused,
+  });
+}
+
+/** The signed-in user's progress through a course. */
+export function useCourseProgress(courseId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.courseProgress(courseId),
+    queryFn: ({ signal }) => getCourseProgress(courseId, { signal }),
+    enabled,
+    retry: retryUnlessRefused,
+  });
+}
+
+/** An exercise's questions, without answers. */
+export function useExercise(courseId: string, itemId: string) {
+  return useQuery({
+    queryKey: queryKeys.exercise(courseId, itemId),
+    queryFn: ({ signal }) => getExercise(courseId, itemId, { signal }),
+    staleTime: 5 * 60_000,
+    retry: retryUnlessRefused,
+  });
+}
+
+/** The signed-in user's note on one course item. */
+export function useNote(courseId: string, itemId: string) {
+  return useQuery({
+    queryKey: queryKeys.note(courseId, itemId),
+    queryFn: ({ signal }) => getNote(courseId, itemId, { signal }),
+    retry: retryUnlessRefused,
+  });
+}
+
+/**
+ * A lecture's short-lived video URL. Never reused from cache: the player
+ * refetches it before it expires, and `dataUpdatedAt` says when it was issued.
+ */
+export function usePlayback(courseId: string, itemId: string) {
+  return useQuery({
+    queryKey: queryKeys.playback(courseId, itemId),
+    queryFn: ({ signal }) => getPlayback(courseId, itemId, { signal }),
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
     retry: retryUnlessRefused,
   });
 }

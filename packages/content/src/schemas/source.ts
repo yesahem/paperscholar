@@ -135,3 +135,58 @@ export const examFileSchema = z.strictObject({
     ),
 });
 export type ExamFile = z.infer<typeof examFileSchema>;
+
+/** A video's key under `video/` in the private bucket, e.g. `transformers/intro.mp4`. */
+export const videoKeySchema = z
+  .string()
+  .regex(
+    /^[a-z0-9][a-z0-9._-]*(\/[a-z0-9][a-z0-9._-]*)*\.mp4$/,
+    "must be a path of lowercase segments under video/, ending in .mp4",
+  )
+  .refine((key) => !key.split("/").some((segment) => segment === ".." || segment === "."), {
+    message: "must not contain . or .. segments",
+  });
+
+const courseLectureFileSchema = z
+  .strictObject({
+    id: slugSchema,
+    type: z.literal("lecture"),
+    title: z.string().trim().min(1).max(120),
+    video_key: videoKeySchema,
+    duration_seconds: z.number().int().min(1).max(6 * 60 * 60),
+  })
+  .transform(({ id, type, title, video_key, duration_seconds }) => ({
+    id,
+    type,
+    title,
+    videoKey: video_key,
+    durationSeconds: duration_seconds,
+  }));
+
+const courseExerciseFileSchema = z.strictObject({
+  id: slugSchema,
+  type: z.literal("exercise"),
+  title: z.string().trim().min(1).max(120),
+  questions: z
+    .array(examQuestionFileSchema)
+    .min(1)
+    .refine(
+      (questions) => new Set(questions.map((question) => question.id)).size === questions.length,
+      "must not repeat question ids",
+    ),
+});
+
+/** `content/courses/<course-id>/course.yaml` (docs/specs/10-secondary-features.md §5). */
+export const courseFileSchema = z.strictObject({
+  title: z.string().trim().min(1).max(120),
+  summary: z.string().trim().min(1).max(300),
+  items: z
+    .array(z.union([courseLectureFileSchema, courseExerciseFileSchema]))
+    .min(1)
+    .refine(
+      (items) => new Set(items.map((item) => item.id)).size === items.length,
+      "must not repeat item ids",
+    ),
+});
+export type CourseFile = z.output<typeof courseFileSchema>;
+export type CourseItemFile = CourseFile["items"][number];
