@@ -1,0 +1,15 @@
+$kind: http-request
+name: Is cold mail on
+order: 1000
+method: GET
+url: "{{baseUrl}}/api/v1/config"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('says whether cold mail is on and whether emails are verified', () => {
+        pm.response.to.have.status(200);
+        const { features } = pm.response.json();
+        pm.collectionVariables.set('coldMailOn', String(features.coldMail));
+        pm.collectionVariables.set('verifiesEmail', String(features.emailVerification));
+      });

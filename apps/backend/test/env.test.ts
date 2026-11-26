@@ -86,7 +86,18 @@ describe("loadConfig", () => {
       // No model, no pipeline.
       pipeline: { llm: null, enabled: false, limits: TEST_PIPELINE_LIMITS },
       courses: { enabled: true },
+      coldMail: { enabled: true, perDay: 5 },
     });
+  });
+
+  test("cold mail: FEATURE_COLD_MAIL and COLD_MAILS_PER_DAY", () => {
+    expect(
+      loadConfig({ ...valid, FEATURE_COLD_MAIL: "false", COLD_MAILS_PER_DAY: "2" })
+        .coldMail,
+    ).toEqual({ enabled: false, perDay: 2 });
+    expect(problemsFor({ ...valid, COLD_MAILS_PER_DAY: "0" })[0]).toStartWith(
+      "COLD_MAILS_PER_DAY",
+    );
   });
 
   test("FEATURE_COURSES=false switches courses off", () => {

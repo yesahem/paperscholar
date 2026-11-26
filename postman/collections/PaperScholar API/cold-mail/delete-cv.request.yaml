@@ -1,0 +1,19 @@
+$kind: http-request
+name: Delete the CV
+order: 3500
+method: DELETE
+url: "{{baseUrl}}/api/v1/cv/{{cvId}}"
+headers:
+  - key: Origin
+    value: "{{webOrigin}}"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('cvId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('deletes it', () => {
+        pm.response.to.have.status(204);
+      });

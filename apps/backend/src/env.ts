@@ -23,6 +23,8 @@ export const DEFAULT_GLOBAL_RUNS_PER_DAY = 20_000;
 export const DEFAULT_EXAM_ATTEMPTS_PER_DAY = 20;
 /** Default reviews and bug reports per user per UTC day (docs/specs/10-secondary-features.md §4). */
 export const DEFAULT_FEEDBACK_PER_DAY = 10;
+/** Default cold-mail generations per user per UTC day (docs/specs/10-secondary-features.md §6). */
+export const DEFAULT_COLD_MAILS_PER_DAY = 5;
 /** Default writes per user per minute (docs/specs/11-security-ops.md §3). */
 export const DEFAULT_MUTATIONS_PER_MINUTE = 60;
 /** Shortest accepted RUNNER_TOKEN and INTERNAL_SECRET. */
@@ -113,6 +115,9 @@ const envSchema = z
     FEATURE_PIPELINE: envBooleanSchema.default(true),
     /** FEATURE_COURSES=false hides courses even when course content exists. */
     FEATURE_COURSES: envBooleanSchema.default(true),
+    /** FEATURE_COLD_MAIL=false switches the cold-mail generator off even with a model. */
+    FEATURE_COLD_MAIL: envBooleanSchema.default(true),
+    COLD_MAILS_PER_DAY: positiveCount(DEFAULT_COLD_MAILS_PER_DAY),
     PIPELINE_MAX_PDF_MB: positiveCount(PIPELINE_DEFAULTS.maxPdfBytes / 1024 / 1024),
     PIPELINE_MAX_PDF_PAGES: positiveCount(PIPELINE_DEFAULTS.maxPdfPages),
     PIPELINE_MIN_STEPS: positiveCount(PIPELINE_DEFAULTS.minSteps),
@@ -562,6 +567,8 @@ export interface AppConfig {
   pipeline: PipelineConfig;
   /** Courses are offered when this is true and course content exists (docs/specs/13-self-hosting.md §4). */
   courses: { enabled: boolean };
+  /** The cold-mail generator (docs/specs/10-secondary-features.md §6); needs a model too. */
+  coldMail: { enabled: boolean; perDay: number };
 }
 
 /**
@@ -617,6 +624,7 @@ export function loadConfig(
     email: emailConfig(env),
     pipeline: pipelineConfig(env),
     courses: { enabled: env.FEATURE_COURSES },
+    coldMail: { enabled: env.FEATURE_COLD_MAIL, perDay: env.COLD_MAILS_PER_DAY },
   };
 }
 

@@ -88,7 +88,13 @@ export function createScriptedLlm(options: ScriptedLlmOptions): ScriptedLlm {
 
       const raw = await answer(request, call);
       const parsed = request.schema.safeParse(raw);
-      const prefix = `${request.system}${request.document?.fileId ?? ""}${request.context.join("")}`;
+      const documentId =
+        request.document === null
+          ? ""
+          : "fileId" in request.document
+            ? request.document.fileId
+            : new Bun.CryptoHasher("sha256").update(request.document.pdf).digest("hex");
+      const prefix = `${request.system}${documentId}${request.context.join("")}`;
       const prefixTokens = tokens(prefix) + (request.document ? 2000 : 0);
       const cached = warmed.has(prefix);
       warmed.add(prefix);

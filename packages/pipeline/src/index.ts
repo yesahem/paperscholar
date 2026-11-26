@@ -50,6 +50,7 @@ export {
   type LlmEffort,
   type LlmErrorKind,
   type LlmPurpose,
+  type LlmDocument,
   type LlmRequest,
   type LlmResult,
   type LlmUsage,

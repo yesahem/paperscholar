@@ -2,12 +2,14 @@ import "server-only";
 
 import {
   courseDetailSchema,
+  instanceConfigSchema,
   courseListSchema,
   paperDetailSchema,
   paperListSchema,
   problemDetailSchema,
   trackListSchema,
   type CourseDetail,
+  type InstanceConfig,
   type CourseSummary,
   type PaperDetail,
   type PaperSummary,
@@ -76,6 +78,13 @@ export async function getCourses(): Promise<CourseSummary[] | null> {
 /** Null when the course does not exist, or courses are off. */
 export function getCourse(courseId: string): Promise<CourseDetail | null> {
   return getContent(`/courses/${encodeURIComponent(courseId)}`, courseDetailSchema);
+}
+
+/** What this instance offers (`GET /v1/config`), cached like content. */
+export async function getInstanceConfig(): Promise<InstanceConfig> {
+  const config = await getContent("/config", instanceConfigSchema);
+  if (!config) throw new ApiError("The API has no /v1/config", 404);
+  return config;
 }
 
 /** Returned by `loadAtBuild` when the API could not be reached during `next build`. */

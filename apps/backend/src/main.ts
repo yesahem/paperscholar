@@ -6,6 +6,7 @@ import { closeDb, createDb } from "@repo/db";
 import { createAvatarStore } from "./adapters/avatar-store";
 import { createContentReader } from "./adapters/content";
 import { createEmailSender } from "./adapters/email/create-email-sender";
+import { createLlmClient } from "./adapters/llm";
 import { createPipeline } from "./adapters/pipeline";
 import { createSandboxProvider } from "./adapters/sandbox";
 import { createApp } from "./create-app";
@@ -37,6 +38,7 @@ const app = createApp({
     runInBackground,
     mode: "process",
   }),
+  llm: config.pipeline.llm ? createLlmClient(config.pipeline.llm, logger) : null,
   runInBackground,
 });
 

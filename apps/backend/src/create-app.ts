@@ -2,12 +2,13 @@ import { CONTENT_INDEX_LOCK, ContentStore } from "@repo/content";
 import { createAdvisoryLock, type Database } from "@repo/db";
 import { createStorage } from "@repo/storage";
 import type { SandboxProvider } from "@repo/runner";
-import { AVATAR_MAX_BYTES } from "@repo/shared";
+import { AVATAR_MAX_BYTES, CV_MAX_BYTES } from "@repo/shared";
 import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import type { AvatarStore } from "./adapters/avatar-store";
 import type { Pipeline } from "./adapters/pipeline";
+import type { LlmClient } from "@repo/pipeline";
 import type { EmailSender } from "./adapters/email/types";
 import { createAuth } from "./auth/auth";
 import { verifiesEmail, type AppConfig } from "./env";
@@ -31,6 +32,7 @@ import { adminUserRoutes } from "./routes/admin/users";
 import { authRoutes } from "./routes/auth";
 import { avatarRoutes } from "./routes/avatars";
 import { configRoutes } from "./routes/config";
+import { coldMailRoutes, CV_UPLOAD_PATH } from "./routes/cold-mail";
 import { coursesRoutes } from "./routes/courses";
 import { examsRoutes } from "./routes/exams";
 import { mediaRoutes } from "./routes/media";
@@ -58,6 +60,7 @@ import { createContentCatalog } from "./services/content-catalog";
 import { createIngestions, PDF_UPLOAD_PATH_PREFIX } from "./services/ingestions";
 import { PROMPT_VERSION } from "@repo/pipeline";
 import { createInstanceFeatures } from "./services/instance-config";
+import { createColdMailService, type ColdMailService } from "./services/cold-mail";
 import { createCourses } from "./services/courses";
 import { createMediaUrls } from "./services/media";
 import { createLeaderboard } from "./services/leaderboard";
@@ -81,6 +84,8 @@ export interface AppDependencies {
   avatarStore: AvatarStore;
   /** The paper pipeline (`createPipeline`); null when the instance has no model. */
   pipeline: Pipeline | null;
+  /** The model for learner features such as cold mail (`createLlmClient`); null without one. */
+  llm: LlmClient | null;
   /**
    * Keeps work going after the response is sent. Serverless hosts must keep
    * the function alive for it (`waitUntil`); a long-running server need not.
@@ -101,6 +106,7 @@ export function createApp({
   sandbox,
   avatarStore,
   pipeline,
+  llm,
   runInBackground,
 }: AppDependencies) {
   const app = new Hono<AppEnv>();
@@ -117,6 +123,7 @@ export function createApp({
     limitBody(undefined, {
       [AVATAR_UPLOAD_PATH]: AVATAR_MAX_BYTES + 64 * 1024,
       [`${PDF_UPLOAD_PATH_PREFIX}*`]: config.pipeline.limits.maxPdfBytes,
+      [CV_UPLOAD_PATH]: CV_MAX_BYTES + 64 * 1024,
     }),
   );
 
@@ -126,7 +133,28 @@ export function createApp({
   const catalog = createContentCatalog(content);
   const limiter = createRateLimiter(db);
   const auth = createAuth({ config, db, email, limiter, logger, runInBackground });
-  const accounts = createAccounts({ db, auth, avatars: avatarStore, logger });
+  const storage = createStorage(config.storage);
+  const coldMail: ColdMailService = createColdMailService({
+    db,
+    storage,
+    llm,
+    limiter,
+    perDay: config.coldMail.perDay,
+    logger,
+    dispatch: (id) => runInBackground(coldMail.generate(id)),
+  });
+  const accounts = createAccounts({
+    db,
+    auth,
+    avatars: avatarStore,
+    logger,
+    deleteUserFiles: (userId) => coldMail.deleteUserFiles(userId),
+  });
+  const coldMailApi = coldMailRoutes(
+    coldMail,
+    () => features.current(),
+    verifiesEmail(config),
+  );
   const avatarUrl = (key: string) => avatarStore.url(key);
   const avatars = createAvatars({ db, store: avatarStore, limiter, logger });
   const profiles = createProfiles({ db, content, avatarUrl });
@@ -151,7 +179,6 @@ export function createApp({
     logger,
   });
   const features = createInstanceFeatures(config, content);
-  const storage = createStorage(config.storage);
   const media = createMediaUrls({ storage, secret: config.auth.secret });
   const courses = createCourses({ db, content, storage, media });
   const feedback = createFeedback({
@@ -226,6 +253,8 @@ export function createApp({
     .route("/leaderboard", leaderboardRoutes(leaderboard))
     .route("/exams", examsRoutes(exams))
     .route("/feedback", feedbackRoutes(feedback, accounts.currentRole))
+    .route("/cv", coldMailApi.cv)
+    .route("/cold-mails", coldMailApi.coldMails)
     .route(
       "/users",
       usersRoutes({

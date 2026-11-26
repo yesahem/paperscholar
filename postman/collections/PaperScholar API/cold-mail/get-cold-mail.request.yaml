@@ -1,0 +1,32 @@
+$kind: http-request
+name: Read the draft
+order: 3300
+method: GET
+url: "{{baseUrl}}/api/v1/cold-mails/{{coldMailId}}"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('cvId')) {
+        pm.execution.skipRequest();
+        return;
+      }
+      // Give the draft a moment to be written before reading it.
+      setTimeout(() => {}, 4000);
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is the caller\'s draft, with text only once it is done', () => {
+        pm.response.to.have.status(200);
+        const mail = pm.response.json();
+        pm.expect(['pending', 'done', 'failed']).to.include(mail.status);
+        pm.expect(mail.target.name).to.eql('Dr. Ada Lovelace');
+        if (mail.status === 'done') {
+          pm.expect(mail.subject).to.be.a('string').and.not.empty;
+          pm.expect(mail.body).to.be.a('string').and.not.empty;
+          pm.expect(mail.highlights).to.be.an('array');
+        } else {
+          pm.expect(mail.subject).to.eql(null);
+        }
+        pm.expect(pm.response.headers.get('Cache-Control')).to.eql('private, no-store');
+      });

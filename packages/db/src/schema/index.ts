@@ -14,3 +14,4 @@ export { ingestionSteps, ingestions, pipelineTasks } from "./pipeline";
 export { examAttempts, type StoredExamQuestion } from "./exams";
 export { feedback } from "./feedback";
 export { courseNotes, courseProgress } from "./courses";
+export { coldMails, cvDocuments } from "./cold-mail";

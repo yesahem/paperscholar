@@ -57,6 +57,15 @@ variables:
   - key: exerciseId
     value: ""
     description: Set by "Course syllabus" to the course's first exercise, if any.
+  - key: coldMailOn
+    value: ""
+    description: Set by "Is cold mail on" from GET /v1/config.
+  - key: cvId
+    value: ""
+    description: Set by "Upload a CV"; blank when cold mail is off or the email must be confirmed.
+  - key: coldMailId
+    value: ""
+    description: Set by "Request a draft".
   - key: exerciseLength
     value: ""
     description: Set by "Read an exercise" to its number of questions.

@@ -16,6 +16,7 @@ import {
 import type { Logger } from "@repo/shared/logger";
 import { z } from "zod";
 import type { LlmConfig } from "../env";
+import { demoColdMailAnswer } from "./demo-cold-mail";
 
 /**
  * The pipeline's model (docs/specs/09-paper-pipeline.md §14), over the
@@ -118,11 +119,21 @@ export function buildMessageParams(
 ): MessageCreateParamsNonStreaming {
   const content: BetaContentBlockParam[] = [];
   const lastCached = request.context.length - 1;
-  if (request.document) {
+  if (request.document && "fileId" in request.document) {
     content.push({
       type: "document",
       source: { type: "file", file_id: request.document.fileId },
       cache_control: CACHE_1H,
+    });
+  } else if (request.document) {
+    // Inline, for a one-off document such as a CV: nothing is stored at the provider.
+    content.push({
+      type: "document",
+      source: {
+        type: "base64",
+        media_type: "application/pdf",
+        data: Buffer.from(request.document.pdf).toString("base64"),
+      },
     });
   }
   request.context.forEach((text, index) => {
@@ -325,7 +336,7 @@ export function createLlmClient(config: LlmConfig, logger: Logger): LlmClient {
   if (config.driver === "fake") {
     return createScriptedLlm({
       model: config.model,
-      answers: demoPaperAnswers(),
+      answers: { ...demoPaperAnswers(), cold_mail: demoColdMailAnswer },
       latencyMs: 200,
     });
   }

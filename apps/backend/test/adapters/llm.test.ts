@@ -95,6 +95,28 @@ describe("buildMessageParams", () => {
     ]);
   });
 
+  test("a one-off PDF, such as a CV, is sent inline and not cached", () => {
+    const pdf = new TextEncoder().encode("%PDF-1.4 a cv");
+    const params = buildMessageParams(
+      "m",
+      request({ purpose: "cold_mail", document: { pdf }, context: [], effort: "medium" }),
+    );
+    expect(params.messages[0]?.content).toEqual([
+      {
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: "application/pdf",
+          data: Buffer.from(pdf).toString("base64"),
+        },
+      },
+      { type: "text", text: "PROMPT" },
+    ]);
+    expect(params.output_config?.effort).toBe("medium");
+    expect(params.fallbacks).toBe("default");
+    expect(params.thinking).toEqual({ type: "adaptive" });
+  });
+
   test("a call that must not see the paper sends no document", () => {
     const params = buildMessageParams("m", request({ document: null, context: [] }));
     expect(params.messages[0]?.content).toEqual([{ type: "text", text: "PROMPT" }]);

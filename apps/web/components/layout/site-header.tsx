@@ -5,9 +5,9 @@ import { BookOpenText } from "lucide-react";
 import Link from "next/link";
 import { AccountControls } from "@/components/auth/account-controls";
 import { VerificationBanner } from "@/components/auth/verification-banner";
-import { CoursesNavLink } from "@/components/courses/courses-nav-link";
 import { ThemeToggle } from "@repo/web-core/theme/theme-toggle";
 import { loadWebEnv } from "@/lib/env";
+import { FeatureNavLink } from "./feature-nav-link";
 import { NavLink } from "./nav-link";
 
 const NAVIGATION = [
@@ -51,7 +51,12 @@ export function SiteHeader({ className }: { className?: string }) {
                 <NavLink href={item.href}>{item.label}</NavLink>
               </li>
             ))}
-            <CoursesNavLink />
+            <FeatureNavLink feature="courses" href="/courses">
+              Courses
+            </FeatureNavLink>
+            <FeatureNavLink feature="coldMail" href="/cold-mail">
+              Cold mail
+            </FeatureNavLink>
           </ul>
         </nav>
         <a

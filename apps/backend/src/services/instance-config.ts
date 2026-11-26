@@ -2,7 +2,7 @@ import type { ContentStore } from "@repo/content";
 import { MAX_CODE_BYTES, type FeatureFlags, type InstanceConfig } from "@repo/shared";
 import { verifiesEmail, type AppConfig } from "../env";
 
-type FlagConfig = Pick<AppConfig, "auth" | "email" | "pipeline" | "courses">;
+type FlagConfig = Pick<AppConfig, "auth" | "email" | "pipeline" | "courses" | "coldMail">;
 
 /**
  * Which optional features this instance offers (docs/specs/13-self-hosting.md §4).
@@ -16,7 +16,7 @@ type FlagConfig = Pick<AppConfig, "auth" | "email" | "pipeline" | "courses">;
 export function featureFlags(config: FlagConfig, hasCourses: boolean): FeatureFlags {
   return {
     pipeline: config.pipeline.enabled,
-    coldMail: false,
+    coldMail: config.coldMail.enabled && config.pipeline.llm !== null,
     interview: false,
     courses: config.courses.enabled && hasCourses,
     listings: false,

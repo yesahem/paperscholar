@@ -40,6 +40,11 @@ export interface AccountsDependencies {
   /** Where avatars are kept: for their URLs, and to delete them with the account. */
   avatars: Pick<AvatarStore, "url" | "delete">;
   logger: Logger;
+  /**
+   * Removes the user's private files (CVs) before the account goes; a failure
+   * stops the deletion, so no file outlives its account.
+   */
+  deleteUserFiles?: (userId: string) => Promise<void>;
   now?: () => Date;
 }
 
@@ -67,6 +72,7 @@ export function createAccounts({
   auth,
   avatars,
   logger,
+  deleteUserFiles = async () => undefined,
   now = () => new Date(),
 }: AccountsDependencies) {
   async function load(userId: string) {
@@ -200,13 +206,14 @@ export function createAccounts({
     },
 
     /**
-     * Deletes the account, its sessions and its avatar file. Every row
+     * Deletes the account, its private files (CVs), its sessions and its avatar file. Every row
      * referencing the user goes with it (foreign keys cascade); content the
      * user created keeps existing without an author. Call `confirmDeletion`
      * first.
      */
     async deleteAccount(userId: string): Promise<void> {
       const row = await load(userId);
+      await deleteUserFiles(userId);
       const context = await auth.$context;
       await context.internalAdapter.deleteUserSessions(userId);
       await context.internalAdapter.deleteUser(userId);

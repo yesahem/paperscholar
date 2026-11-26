@@ -71,6 +71,13 @@
       "when": 1795601329184,
       "tag": "0009_courses",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795629097458,
+      "tag": "0010_cold_mail",
+      "breakpoints": true
     }
   ]
 }

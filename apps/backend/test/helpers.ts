@@ -4,6 +4,7 @@ import type { SandboxProvider } from "@repo/runner";
 import { FsStorage } from "@repo/storage";
 import { avatarStoreOver, type AvatarStore } from "../src/adapters/avatar-store";
 import type { Pipeline } from "../src/adapters/pipeline";
+import type { LlmClient } from "@repo/pipeline";
 import type { EmailMessage, EmailSender } from "../src/adapters/email/types";
 import { createApp } from "../src/create-app";
 import type { AppConfig } from "../src/env";
@@ -63,6 +64,7 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   email: { driver: "none" },
   pipeline: { llm: null, enabled: false, limits: TEST_PIPELINE_LIMITS },
   courses: { enabled: true },
+  coldMail: { enabled: true, perDay: 5 },
   ...overrides,
 });
 
@@ -108,6 +110,7 @@ export interface TestAppOptions {
   sandbox?: SandboxProvider;
   avatarStore?: AvatarStore;
   pipeline?: Pipeline | null;
+  llm?: LlmClient | null;
 }
 
 /** Avatars kept in memory, served by the API as with the fs driver. */
@@ -180,6 +183,7 @@ export function createTestApp(
     sandbox = unusedSandbox,
     avatarStore = memoryAvatarStore(),
     pipeline = null,
+    llm = null,
   }: Omit<TestAppOptions, "content"> = {},
 ) {
   const logs: CapturedLog[] = [];
@@ -198,6 +202,7 @@ export function createTestApp(
     sandbox,
     avatarStore,
     pipeline,
+    llm,
     runInBackground: (task) => {
       background.push(task);
     },

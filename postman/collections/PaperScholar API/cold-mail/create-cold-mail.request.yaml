@@ -1,0 +1,31 @@
+$kind: http-request
+name: Request a draft
+order: 3200
+method: POST
+url: "{{baseUrl}}/api/v1/cold-mails"
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: json
+  content: |-
+    {
+      "cvId": "{{cvId}}",
+      "targetType": "professor",
+      "target": { "name": "Dr. Ada Lovelace", "organisation": "Analytical Engines Lab" },
+      "tone": "formal"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('cvId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('accepts it and answers an id to poll', () => {
+        pm.response.to.have.status(202);
+        pm.collectionVariables.set('coldMailId', pm.response.json().id);
+      });

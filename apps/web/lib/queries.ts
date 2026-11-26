@@ -4,6 +4,7 @@ import type { LeaderboardSort } from "@repo/shared/progress";
 import { sessionQueryKeys, useMe } from "@repo/web-core/queries/session";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { getColdMail, getColdMails, getCvs } from "@/lib/api/cold-mail";
 import { getCourseProgress, getExercise, getNote, getPlayback } from "@/lib/api/courses";
 import { getExamAttempts, getExamTopics } from "@/lib/api/exams";
 import { getMyFeedback, getReviews } from "@/lib/api/feedback";
@@ -34,6 +35,9 @@ export const queryKeys = {
     ["courses", courseId, "exercise", itemId] as const,
   note: (courseId: string, itemId: string) =>
     ["courses", courseId, "note", itemId] as const,
+  cvs: ["cv"] as const,
+  coldMails: ["cold-mails"] as const,
+  coldMail: (id: string) => ["cold-mails", id] as const,
   playback: (courseId: string, itemId: string) =>
     ["courses", courseId, "playback", itemId] as const,
 };
@@ -199,6 +203,36 @@ export function usePlayback(courseId: string, itemId: string) {
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 0,
     refetchOnWindowFocus: false,
+    retry: retryUnlessRefused,
+  });
+}
+
+/** The signed-in user's CVs. */
+export function useCvs() {
+  return useQuery({
+    queryKey: queryKeys.cvs,
+    queryFn: ({ signal }) => getCvs({ signal }),
+    retry: retryUnlessRefused,
+  });
+}
+
+/** One draft, polled while it is being written. */
+export function useColdMail(id: string, pollMs: number) {
+  return useQuery({
+    queryKey: queryKeys.coldMail(id),
+    queryFn: ({ signal }) => getColdMail(id, { signal }),
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? pollMs : false),
+    retry: retryUnlessRefused,
+  });
+}
+
+/** The signed-in user's drafts, newest first, a page at a time. */
+export function useColdMails() {
+  return useInfiniteQuery({
+    queryKey: queryKeys.coldMails,
+    queryFn: ({ pageParam, signal }) => getColdMails(pageParam, { signal }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor,
     retry: retryUnlessRefused,
   });
 }

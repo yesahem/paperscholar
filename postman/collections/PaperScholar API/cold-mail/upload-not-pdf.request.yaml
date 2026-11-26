@@ -1,0 +1,26 @@
+$kind: http-request
+name: Upload a file that is not a PDF
+order: 3100
+method: POST
+url: "{{baseUrl}}/api/v1/cv"
+headers:
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: formdata
+  content:
+    - key: cv
+      type: file
+      src: postman/fixtures/avatar.png
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('cvId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('is refused by its contents', () => {
+        pm.response.to.have.status(400);
+        pm.expect(pm.response.json().error.details.issues[0].path).to.eql('cv');
+      });

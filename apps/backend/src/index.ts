@@ -7,6 +7,7 @@ import { waitUntil } from "@vercel/functions";
 import { createAvatarStore } from "./adapters/avatar-store";
 import { createContentReader } from "./adapters/content";
 import { createEmailSender } from "./adapters/email/create-email-sender";
+import { createLlmClient } from "./adapters/llm";
 import { createPipeline } from "./adapters/pipeline";
 import { createSandboxProvider } from "./adapters/sandbox";
 import { createApp } from "./create-app";
@@ -41,5 +42,6 @@ export default createApp({
     runInBackground,
     mode: "serverless",
   }),
+  llm: config.pipeline.llm ? createLlmClient(config.pipeline.llm, logger) : null,
   runInBackground,
 });

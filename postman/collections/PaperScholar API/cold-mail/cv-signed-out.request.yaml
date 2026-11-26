@@ -1,0 +1,13 @@
+$kind: http-request
+name: CVs when signed out
+order: 1100
+method: GET
+url: "{{baseUrl}}/api/v1/cv"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const on = pm.collectionVariables.get('coldMailOn') === 'true';
+      pm.test(on ? 'is unauthenticated' : 'is not found while cold mail is off', () => {
+        pm.response.to.have.status(on ? 401 : 404);
+      });

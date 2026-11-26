@@ -1,0 +1,38 @@
+$kind: http-request
+name: Upload a CV
+order: 3000
+method: POST
+url: "{{baseUrl}}/api/v1/cv"
+headers:
+  - key: Origin
+    value: "{{webOrigin}}"
+body:
+  type: formdata
+  content:
+    - key: cv
+      type: file
+      src: postman/fixtures/cv.pdf
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.collectionVariables.set('cvId', '');
+      if (pm.collectionVariables.get('coldMailOn') !== 'true') pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.collectionVariables.get('verifiesEmail') === 'true') {
+        pm.test('needs a confirmed email first', () => {
+          pm.response.to.have.status(403);
+          pm.expect(pm.response.json().error.code).to.eql('email_not_verified');
+        });
+        return;
+      }
+      pm.test('stores the PDF privately and describes it', () => {
+        pm.response.to.have.status(201);
+        const cv = pm.response.json();
+        pm.expect(cv.filename).to.eql('cv.pdf');
+        pm.expect(cv.pages).to.eql(1);
+        pm.expect(cv).to.not.have.property('storageKey');
+        pm.collectionVariables.set('cvId', cv.id);
+      });

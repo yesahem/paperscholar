@@ -1,0 +1,9 @@
+$kind: collection
+name: Cold mail
+description: |-
+  CVs and cold-mail drafts (docs/specs/10-secondary-features.md §6), as a
+  throwaway account deleted at the end. Without a model the feature is off and
+  its routes answer 404. On an instance that requires a confirmed email the
+  account is refused with 403. Otherwise a CV is uploaded, a draft requested
+  and read back, and the CV deleted. Uploads use postman/fixtures/cv.pdf.
+order: 3950

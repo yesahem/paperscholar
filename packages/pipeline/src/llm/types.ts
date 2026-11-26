@@ -20,7 +20,22 @@ export interface LlmClient {
 
 /** What each call is for: selects the prompt, and lets fakes answer by purpose. */
 export type LlmPurpose =
-  "read" | "plan" | "write" | "mutants" | "equivalence" | "solve" | "fidelity";
+  | "read"
+  | "plan"
+  | "write"
+  | "mutants"
+  | "equivalence"
+  | "solve"
+  | "fidelity"
+  /** A learner's outreach email from their CV (docs/specs/10-secondary-features.md §6). */
+  | "cold_mail";
+
+/**
+ * A PDF the model reads: uploaded once and referenced by id (the pipeline's
+ * paper, read many times), or sent inline with the one call that needs it (a
+ * learner's CV, which is then not kept by the provider).
+ */
+export type LlmDocument = { fileId: string } | { pdf: Uint8Array };
 
 /** How hard the model should think (§14: high for planning and writing). */
 export type LlmEffort = "low" | "medium" | "high";
@@ -35,8 +50,8 @@ export interface LlmRequest<Schema extends z.ZodType> {
    * vary between calls of one run, or the cache is lost.
    */
   system: string;
-  /** The uploaded PDF, or null for calls that must not see the paper (V8). */
-  document: { fileId: string } | null;
+  /** The PDF, or null for calls that must not see one (V8). */
+  document: LlmDocument | null;
   /** Run-stable text placed after the document and cached with it. */
   context: string[];
   /** The part that varies per call. */

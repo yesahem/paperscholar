@@ -1,0 +1,18 @@
+$kind: http-request
+name: Draft history
+order: 3400
+method: GET
+url: "{{baseUrl}}/api/v1/cold-mails"
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('cvId')) pm.execution.skipRequest();
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('lists the draft', () => {
+        pm.response.to.have.status(200);
+        const ids = pm.response.json().items.map((item) => item.id);
+        pm.expect(ids).to.include(pm.collectionVariables.get('coldMailId'));
+      });
